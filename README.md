@@ -1,23 +1,25 @@
 # Running Fingers
 
-指を足に見立ててタップで走るRobloxゲーム
+指を足に見立ててタップで走るモバイルゲーム
 
 ## プロジェクト概要
 
 | 項目 | 内容 |
 |------|------|
 | **コンセプト** | 指を足に見立て、左右交互にタップして走る |
+| **目標** | スイカゲームのように「シンプルだけど面白い」 |
 | **ターゲット** | スコアアタック勢（将来的に大会も見据える） |
-| **プラットフォーム** | Roblox（成功後にFlutter版も検討） |
-| **マネタイズ** | Robux（ゲームパス、チケット販売）、広告、Premium Payouts |
+| **プラットフォーム** | Android → iOS（クロスプラットフォーム） |
+| **マネタイズ** | 広告、アプリ内課金（チケット購入） |
 
 ## 技術スタック
 
 | 項目 | 技術 |
 |------|------|
-| **エンジン** | Roblox Studio |
-| **言語** | Luau |
-| **AI支援** | Claude Code + robloxstudio-mcp |
+| **フレームワーク** | Flutter |
+| **言語** | Dart |
+| **開発環境** | Windows + Visual Studio Code |
+| **データ保存** | SharedPreferences（ローカル） |
 | **バージョン管理** | Git + GitHub |
 
 ---
@@ -26,18 +28,15 @@
 
 ### Phase 0: 環境構築 🔄 現在のフェーズ
 
-- [ ] Roblox Studioインストール
-- [ ] robloxstudio-mcp セットアップ
-  - [ ] `claude mcp add robloxstudio -- npx robloxstudio-mcp`
-  - [ ] Roblox Studioプラグインインストール
-  - [ ] HTTP Requests有効化
-- [ ] MCPの動作確認
+- [ ] Flutter SDK インストール
+- [ ] Android Studio インストール（エミュレータ用）
+- [ ] VS Code + Flutter拡張機能
+- [ ] 動作確認（flutter doctor）
 - [ ] 新規プロジェクト作成
 
 ### Phase 1: プロトタイプ
 
 - [ ] 基本画面レイアウト作成
-  - [ ] 2D GUI（ScreenGui）でボタン配置
   - [ ] 左右ボタンの配置
   - [ ] タイマー/カウンター表示エリア
 - [ ] タップ検出の実装
@@ -62,7 +61,7 @@
 
 ### Phase 3: データ保存・リザルト
 
-- [ ] DataStoreでの記録保存
+- [ ] SharedPreferencesでの記録保存
   - [ ] 自己ベスト記録
   - [ ] 直近10回の履歴
 - [ ] リザルト画面
@@ -86,12 +85,12 @@
 - [ ] 効果音
 - [ ] モバイル最適化
 
-### Phase 5: 公開準備
+### Phase 5: 公開準備（Android）
 
-- [ ] ゲームアイコン・サムネイル作成
-- [ ] ゲーム説明文作成
+- [ ] アプリアイコン・スクリーンショット作成
+- [ ] アプリ説明文作成
 - [ ] テストプレイ・バグ修正
-- [ ] Robloxで公開
+- [ ] Google Play Storeで公開
 
 ### Phase 6: 収益化
 
@@ -99,11 +98,15 @@
   - [ ] 広告視聴で1回分獲得
   - [ ] 課金で10回分獲得
   - [ ] スキップ（入手しない）オプション
-- [ ] ゲームパス設計（広告非表示など）
-- [ ] スキン・カスタマイズ要素
-- [ ] Premium Payouts設定
+- [ ] 広告実装（AdMob）
+- [ ] アプリ内課金実装
 
-### Phase 7: 拡張機能（将来）
+### Phase 7: iOS展開
+
+- [ ] iOS向けビルド設定
+- [ ] App Store公開
+
+### Phase 8: 拡張機能（将来）
 
 - [ ] 追加モード（200回、500回、30秒、60秒など）
 - [ ] グローバルランキング
@@ -164,7 +167,7 @@
 | 方法 | 獲得数 | 備考 |
 |------|--------|------|
 | 広告視聴 | 1回分 | 無料 |
-| 課金購入 | 10回分 | Robux |
+| 課金購入 | 10回分 | アプリ内課金 |
 | スキップ | 0 | 入手しない選択も可能 |
 
 #### 記録の表示
@@ -225,52 +228,28 @@
 
 ## データ構造
 
-### DataStore設計
+### SharedPreferences設計
 
-```lua
--- プレイヤーデータ
-PlayerData = {
-    -- チケット所持数
-    tickets = 5,
+```dart
+// プレイヤーデータ
+class PlayerData {
+  // チケット所持数
+  int tickets = 0;
 
-    -- タイムアタック100回モード
-    timeAttack100 = {
-        best = {
-            time = 12.34,  -- 秒
-            date = 1706789012,  -- Unix timestamp
-            hadFalseStart = false,
-            usedTicket = false  -- チケット使用フラグ
-        },
-        history = {
-            -- 直近10件
-            {
-                time = 12.34,
-                date = 1706789012,
-                hadFalseStart = false,
-                usedTicket = false
-            },
-            -- ...
-        }
-    },
+  // タイムアタック100回モード
+  RecordData? timeAttack100Best;
+  List<RecordData> timeAttack100History = []; // 直近10件
 
-    -- タップチャレンジ10秒モード
-    tapChallenge10s = {
-        best = {
-            taps = 156,
-            date = 1706789012,
-            hadFalseStart = false,
-            usedTicket = false
-        },
-        history = {
-            {
-                taps = 156,
-                date = 1706789012,
-                hadFalseStart = false,
-                usedTicket = false
-            },
-            -- ...
-        }
-    }
+  // タップチャレンジ10秒モード
+  RecordData? tapChallenge10sBest;
+  List<RecordData> tapChallenge10sHistory = []; // 直近10件
+}
+
+class RecordData {
+  final double value; // 秒 or タップ数
+  final DateTime date;
+  final bool hadFalseStart;
+  final bool usedTicket;
 }
 ```
 
@@ -287,36 +266,35 @@ PlayerData = {
 ### 3. チケットは公平性を保つ仕組み
 チケット使用記録は🎫マーク付きで区別。ランキングでフィルタ可能なため、通常プレイヤーとの公平性を維持。
 
-### 4. モバイルファースト
-Robloxユーザーの多くはモバイル。タップ操作の快適さを最優先。
+### 4. スイカゲームを参考に
+シンプルなルール、中毒性のあるゲームプレイ、すぐ遊べてもう一回やりたくなる体験を目指す。
 
 ---
 
-## MCPセットアップ手順
+## 環境構築手順
 
-### 1. robloxstudio-mcpのインストール
+### 1. Flutter SDKのインストール
 
 ```bash
-claude mcp add robloxstudio -- npx robloxstudio-mcp
+# Windows: https://docs.flutter.dev/get-started/install/windows
+# ダウンロード後、パスを通す
 ```
 
-### 2. Roblox Studioプラグインのインストール
+### 2. Android Studioのインストール
 
-1. Roblox Studioを開く
-2. プラグインマネージャーから「robloxstudio-mcp」をインストール
-   - または: https://create.roblox.com/store/asset/YOUR_PLUGIN_ID
+- https://developer.android.com/studio
+- エミュレータのセットアップ
 
-### 3. HTTP Requestsの有効化
+### 3. VS Code拡張機能
 
-1. Roblox Studioでゲームを開く
-2. ゲーム設定 > セキュリティ
-3. 「Allow HTTP Requests」を有効化
+- Flutter
+- Dart
 
 ### 4. 動作確認
 
-Claude Codeで以下を試す:
-- ゲーム構造の確認
-- 簡単なスクリプト作成
+```bash
+flutter doctor
+```
 
 ---
 
@@ -324,10 +302,11 @@ Claude Codeで以下を試す:
 
 **現在: Phase 0 - 環境構築**
 
-1. Roblox Studioをインストール
-2. robloxstudio-mcpをセットアップ
-3. 新規プロジェクトを作成
-4. MCPの動作確認
+1. Flutter SDKをインストール
+2. Android Studioをインストール（エミュレータ用）
+3. VS Code + Flutter拡張機能をインストール
+4. `flutter doctor` で環境確認
+5. 新規プロジェクト作成
 
 ---
 
@@ -335,4 +314,6 @@ Claude Codeで以下を試す:
 
 - 開発開始日: 2026-01-31
 - 現在のフェーズ: Phase 0（環境構築）
-- Flutter版は Roblox版が成功した後に検討
+- プラットフォーム: Android優先 → iOS展開
+- 目標: シンプルで中毒性のあるタップゲーム（スイカゲーム参考）
+- 将来: タスク管理アプリなど、Flutter知識を他プロジェクトにも活用
