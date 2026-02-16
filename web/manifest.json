@@ -1,0 +1,10 @@
+{
+    "name": "Running Fingers",
+    "short_name": "RunFingers",
+    "start_url": ".",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#1a1a2e",
+    "theme_color": "#1a1a2e",
+    "description": "指を足に見立ててタップで走るモバイルゲーム"
+}
