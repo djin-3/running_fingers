@@ -379,23 +379,30 @@ flutter doctor
 
 ## 次のステップ
 
-**現在: Phase 0 - 環境構築**
+**現在: Phase 1 - プロトタイプ**
 
-1. Flutter SDKをインストール
-2. Android Studioをインストール（エミュレータ用）
-3. VS Code + Flutter拡張機能をインストール
-4. `flutter doctor` で環境確認
-5. 新規プロジェクト作成
+Phase 0（環境構築）は完了:
+- ✓ Flutter SDK インストール済み
+- ✓ Android Studio インストール済み
+- ✓ VS Code + Flutter拡張機能
+- ✓ `flutter doctor` 全項目OK（Visual Studio以外）
+- ✓ プロジェクト作成済み（`C:\Users\analy\running_fingers`）
+
+次にやること:
+1. 基本画面レイアウト作成（左右ボタン配置）
+2. タップ検出の実装
+3. 基本的なカウント機能
 
 ---
 
 ## 開発メモ
 
 - 開発開始日: 2026-01-31
-- 現在のフェーズ: Phase 0（環境構築）
+- 現在のフェーズ: Phase 1（プロトタイプ）
 - プラットフォーム: Android → iOS（Web版なし）
 - Web版を作らない理由: タップ精度が最重要。ブラウザ経由はレイテンシが増える
 - 目標: シンプルで中毒性のあるタップゲーム（スイカゲーム参考）
 - 将来: タスク管理アプリなど、Flutter知識を他プロジェクトにも活用
 - 開発環境: ローカルPC（コード編集・ビルド・テスト）
 - VPS: 設計・ドキュメント編集のみ（Flutter環境は構築しない）
+- ローカルプロジェクトパス: `C:\Users\analy\running_fingers`
