@@ -25,6 +25,9 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late GameState _gameState;
+  bool _leftTapped = false;
+  bool _rightTapped = false;
+  bool _centerTapped = false;
 
   @override
   void initState() {
@@ -383,11 +386,20 @@ class _GameScreenState extends State<GameScreen> {
         Expanded(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: isActive ? (_) => _handleTap(side: TapSide.left) : null,
+            onTapDown: isActive ? (_) {
+              setState(() => _leftTapped = true);
+              _handleTap(side: TapSide.left);
+            } : null,
+            onTapUp: isActive ? (_) {
+              setState(() => _leftTapped = false);
+            } : null,
+            onTapCancel: isActive ? () {
+              setState(() => _leftTapped = false);
+            } : null,
             child: Center(
               child: TapButton(
                 label: 'L',
-                onTap: () {},
+                isTapped: _leftTapped,
                 isInvalid: _gameState.invalidTapSide == TapSide.left,
                 isActive: isActive,
               ),
@@ -403,11 +415,20 @@ class _GameScreenState extends State<GameScreen> {
         Expanded(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: isActive ? (_) => _handleTap(side: TapSide.right) : null,
+            onTapDown: isActive ? (_) {
+              setState(() => _rightTapped = true);
+              _handleTap(side: TapSide.right);
+            } : null,
+            onTapUp: isActive ? (_) {
+              setState(() => _rightTapped = false);
+            } : null,
+            onTapCancel: isActive ? () {
+              setState(() => _rightTapped = false);
+            } : null,
             child: Center(
               child: TapButton(
                 label: 'R',
-                onTap: () {},
+                isTapped: _rightTapped,
                 isInvalid: _gameState.invalidTapSide == TapSide.right,
                 isActive: isActive,
               ),
@@ -422,11 +443,20 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildOneFingerLayout(bool isActive) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: isActive ? (_) => _handleTap() : null,
+      onTapDown: isActive ? (_) {
+        setState(() => _centerTapped = true);
+        _handleTap();
+      } : null,
+      onTapUp: isActive ? (_) {
+        setState(() => _centerTapped = false);
+      } : null,
+      onTapCancel: isActive ? () {
+        setState(() => _centerTapped = false);
+      } : null,
       child: Center(
         child: TapButton(
           label: 'TAP',
-          onTap: () {},
+          isTapped: _centerTapped,
           isActive: isActive,
           size: 100,
         ),
