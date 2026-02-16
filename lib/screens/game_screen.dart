@@ -378,32 +378,51 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  /// タップがボタン中心から有効半径内かどうか判定
+  bool _isWithinTapRadius(Offset tapPosition, Offset center, double buttonSize) {
+    // ボタン半径 + 20px の余裕
+    final tapRadius = buttonSize / 2 + 20;
+    return (tapPosition - center).distance <= tapRadius;
+  }
+
   /// 2本モード: 左右ボタン配置
   Widget _buildTwoFingerLayout(bool isActive) {
+    const buttonSize = 80.0;
+
     return Row(
       children: [
         // 左半分
         Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: isActive ? (_) {
-              setState(() => _leftTapped = true);
-              _handleTap(side: TapSide.left);
-            } : null,
-            onTapUp: isActive ? (_) {
-              setState(() => _leftTapped = false);
-            } : null,
-            onTapCancel: isActive ? () {
-              setState(() => _leftTapped = false);
-            } : null,
-            child: Center(
-              child: TapButton(
-                label: 'L',
-                isTapped: _leftTapped,
-                isInvalid: _gameState.invalidTapSide == TapSide.left,
-                isActive: isActive,
-              ),
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final center = Offset(
+                constraints.maxWidth / 2,
+                constraints.maxHeight / 2,
+              );
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: isActive ? (details) {
+                  if (_isWithinTapRadius(details.localPosition, center, buttonSize)) {
+                    setState(() => _leftTapped = true);
+                    _handleTap(side: TapSide.left);
+                  }
+                } : null,
+                onTapUp: isActive ? (_) {
+                  setState(() => _leftTapped = false);
+                } : null,
+                onTapCancel: isActive ? () {
+                  setState(() => _leftTapped = false);
+                } : null,
+                child: Center(
+                  child: TapButton(
+                    label: 'L',
+                    isTapped: _leftTapped,
+                    isInvalid: _gameState.invalidTapSide == TapSide.left,
+                    isActive: isActive,
+                  ),
+                ),
+              );
+            },
           ),
         ),
         // 区切り線
@@ -413,26 +432,36 @@ class _GameScreenState extends State<GameScreen> {
         ),
         // 右半分
         Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: isActive ? (_) {
-              setState(() => _rightTapped = true);
-              _handleTap(side: TapSide.right);
-            } : null,
-            onTapUp: isActive ? (_) {
-              setState(() => _rightTapped = false);
-            } : null,
-            onTapCancel: isActive ? () {
-              setState(() => _rightTapped = false);
-            } : null,
-            child: Center(
-              child: TapButton(
-                label: 'R',
-                isTapped: _rightTapped,
-                isInvalid: _gameState.invalidTapSide == TapSide.right,
-                isActive: isActive,
-              ),
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final center = Offset(
+                constraints.maxWidth / 2,
+                constraints.maxHeight / 2,
+              );
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: isActive ? (details) {
+                  if (_isWithinTapRadius(details.localPosition, center, buttonSize)) {
+                    setState(() => _rightTapped = true);
+                    _handleTap(side: TapSide.right);
+                  }
+                } : null,
+                onTapUp: isActive ? (_) {
+                  setState(() => _rightTapped = false);
+                } : null,
+                onTapCancel: isActive ? () {
+                  setState(() => _rightTapped = false);
+                } : null,
+                child: Center(
+                  child: TapButton(
+                    label: 'R',
+                    isTapped: _rightTapped,
+                    isInvalid: _gameState.invalidTapSide == TapSide.right,
+                    isActive: isActive,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -441,26 +470,38 @@ class _GameScreenState extends State<GameScreen> {
 
   /// 1本モード: 中央ボタン配置
   Widget _buildOneFingerLayout(bool isActive) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: isActive ? (_) {
-        setState(() => _centerTapped = true);
-        _handleTap();
-      } : null,
-      onTapUp: isActive ? (_) {
-        setState(() => _centerTapped = false);
-      } : null,
-      onTapCancel: isActive ? () {
-        setState(() => _centerTapped = false);
-      } : null,
-      child: Center(
-        child: TapButton(
-          label: 'TAP',
-          isTapped: _centerTapped,
-          isActive: isActive,
-          size: 100,
-        ),
-      ),
+    const buttonSize = 100.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final center = Offset(
+          constraints.maxWidth / 2,
+          constraints.maxHeight / 2,
+        );
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: isActive ? (details) {
+            if (_isWithinTapRadius(details.localPosition, center, buttonSize)) {
+              setState(() => _centerTapped = true);
+              _handleTap();
+            }
+          } : null,
+          onTapUp: isActive ? (_) {
+            setState(() => _centerTapped = false);
+          } : null,
+          onTapCancel: isActive ? () {
+            setState(() => _centerTapped = false);
+          } : null,
+          child: Center(
+            child: TapButton(
+              label: 'TAP',
+              isTapped: _centerTapped,
+              isActive: isActive,
+              size: buttonSize,
+            ),
+          ),
+        );
+      },
     );
   }
 }
