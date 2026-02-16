@@ -4,11 +4,11 @@ import '../widgets/tap_button.dart';
 
 /// ゲーム画面
 ///
-/// Phase 1 プロトタイプ:
+/// - スタート合図シーケンス（"On your mark" → "Set" → "Go!!"）
+/// - フライング検出とペナルティ表示
 /// - 2本モード: 左右ボタン配置、交互タップ検出
 /// - 1本モード: 中央ボタン配置、連打検出
 /// - タイマー/カウンター表示
-/// - 基本的なカウント機能
 class GameScreen extends StatefulWidget {
   final int fingerMode;
   final bool isTimeAttack;
@@ -62,7 +62,7 @@ class _GameScreenState extends State<GameScreen> {
         child: Column(
           children: [
             _buildHeader(context),
-            Expanded(child: _buildInfoDisplay(context)),
+            Expanded(child: _buildCenterArea(context)),
             _buildTapArea(context),
           ],
         ),
@@ -106,50 +106,192 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  /// 情報表示エリア: タイマー、カウンター、ステータス
-  Widget _buildInfoDisplay(BuildContext context) {
+  /// 中央エリア: フェーズに応じた表示切り替え
+  Widget _buildCenterArea(BuildContext context) {
+    switch (_gameState.phase) {
+      case GamePhase.ready:
+        return _buildReadyView(context);
+      case GamePhase.onYourMark:
+        return _buildStartSequenceView(context, 'On your mark', Colors.amber);
+      case GamePhase.set:
+        return _buildStartSequenceView(context, 'Set', Colors.orange);
+      case GamePhase.playing:
+        return _buildPlayingView(context);
+      case GamePhase.finished:
+        return _buildFinishedView(context);
+    }
+  }
+
+  /// スタートボタン表示
+  Widget _buildReadyView(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // ステータス表示
-          _buildStatusText(context),
+          Text(
+            '準備はいい？',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: Colors.grey,
+                ),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: 200,
+            height: 60,
+            child: ElevatedButton(
+              onPressed: _gameState.startSequence,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              child: const Text('スタート'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// スタート合図シーケンス表示（"On your mark" / "Set"）
+  Widget _buildStartSequenceView(BuildContext context, String text, Color color) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            text,
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          if (_gameState.phase == GamePhase.set) ...[
+            const SizedBox(height: 16),
+            Text(
+              '待て...',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.grey,
+                  ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// プレイ中の表示
+  Widget _buildPlayingView(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // フライング警告
+          if (_gameState.hadFalseStart) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.warning_amber, color: Colors.red, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    _gameState.isInPenalty
+                        ? 'フライング！ペナルティ中 ${_gameState.penaltyRemainingSeconds.toStringAsFixed(1)}秒'
+                        : 'フライング！ペナルティ適用済み',
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          // "Go!!" 表示（開始直後）
+          if (_gameState.elapsedMilliseconds < 800)
+            Text(
+              'Go!!',
+              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 64,
+                  ),
+            )
+          else
+            Text(
+              'プレイ中',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
           const SizedBox(height: 24),
           // メイン数値
           _buildMainValue(context),
           const SizedBox(height: 8),
           // サブ情報
           _buildSubInfo(context),
-          const SizedBox(height: 24),
-          // ゲーム終了時のボタン
-          if (_gameState.phase == GamePhase.finished) _buildFinishButtons(context),
         ],
       ),
     );
   }
 
-  Widget _buildStatusText(BuildContext context) {
-    String status;
-    Color color;
-
-    switch (_gameState.phase) {
-      case GamePhase.ready:
-        status = 'タップして開始';
-        color = Colors.amber;
-      case GamePhase.playing:
-        status = 'プレイ中';
-        color = Colors.green;
-      case GamePhase.finished:
-        status = '完了！';
-        color = Colors.cyan;
-    }
-
-    return Text(
-      status,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: color,
-            fontWeight: FontWeight.bold,
+  /// 完了画面
+  Widget _buildFinishedView(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '完了！',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: Colors.cyan,
+                  fontWeight: FontWeight.bold,
+                ),
           ),
+          const SizedBox(height: 24),
+          _buildMainValue(context),
+          const SizedBox(height: 8),
+          _buildSubInfo(context),
+          // フライング情報
+          if (_gameState.hadFalseStart) ...[
+            const SizedBox(height: 12),
+            Text(
+              'フライングペナルティあり',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.red,
+                  ),
+            ),
+          ],
+          const SizedBox(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _resetGame,
+                icon: const Icon(Icons.replay),
+                label: const Text('もう一度'),
+              ),
+              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.home),
+                label: const Text('メニュー'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -158,11 +300,9 @@ class _GameScreenState extends State<GameScreen> {
     String label;
 
     if (widget.isTimeAttack) {
-      // タイムアタック: 時間を大きく表示
       value = _gameState.elapsedFormatted;
       label = '秒';
     } else {
-      // タップチャレンジ: タップ数を大きく表示
       value = _gameState.tapCount.toString();
       label = '回';
     }
@@ -178,6 +318,7 @@ class _GameScreenState extends State<GameScreen> {
                 fontWeight: FontWeight.bold,
                 fontFamily: 'monospace',
                 fontSize: 72,
+                color: _gameState.isInPenalty ? Colors.red.withValues(alpha: 0.5) : null,
               ),
         ),
         const SizedBox(width: 8),
@@ -193,7 +334,6 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _buildSubInfo(BuildContext context) {
     if (widget.isTimeAttack) {
-      // タイムアタック: タップ数 / 100 を表示
       return Text(
         '${_gameState.tapCount} / ${GameState.timeAttackTarget} タップ',
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -201,38 +341,24 @@ class _GameScreenState extends State<GameScreen> {
             ),
       );
     } else {
-      // タップチャレンジ: 残り時間を表示
       return Text(
-        '残り ${_gameState.remainingFormatted} 秒',
+        _gameState.phase == GamePhase.finished
+            ? '10.00 秒経過'
+            : '残り ${_gameState.remainingFormatted} 秒',
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: _gameState.remainingSeconds < 3.0 ? Colors.red : Colors.grey,
+              color: _gameState.remainingSeconds < 3.0 && _gameState.phase == GamePhase.playing
+                  ? Colors.red
+                  : Colors.grey,
             ),
       );
     }
   }
 
-  Widget _buildFinishButtons(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton.icon(
-          onPressed: _resetGame,
-          icon: const Icon(Icons.replay),
-          label: const Text('もう一度'),
-        ),
-        const SizedBox(width: 16),
-        OutlinedButton.icon(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.home),
-          label: const Text('メニュー'),
-        ),
-      ],
-    );
-  }
-
   /// タップエリア: ボタン配置
   Widget _buildTapArea(BuildContext context) {
-    final isActive = _gameState.phase != GamePhase.finished;
+    // スタートシーケンス中とプレイ中のみタップ受付
+    final isTappable = _gameState.phase == GamePhase.set ||
+        _gameState.phase == GamePhase.playing;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.4,
@@ -244,8 +370,8 @@ class _GameScreenState extends State<GameScreen> {
         ),
       ),
       child: widget.fingerMode == 2
-          ? _buildTwoFingerLayout(isActive)
-          : _buildOneFingerLayout(isActive),
+          ? _buildTwoFingerLayout(isTappable)
+          : _buildOneFingerLayout(isTappable),
     );
   }
 
@@ -257,11 +383,11 @@ class _GameScreenState extends State<GameScreen> {
         Expanded(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: (_) => _handleTap(side: TapSide.left),
+            onTapDown: isActive ? (_) => _handleTap(side: TapSide.left) : null,
             child: Center(
               child: TapButton(
                 label: 'L',
-                onTap: () {}, // GestureDetector が処理
+                onTap: () {},
                 isInvalid: _gameState.invalidTapSide == TapSide.left,
                 isActive: isActive,
               ),
@@ -277,7 +403,7 @@ class _GameScreenState extends State<GameScreen> {
         Expanded(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: (_) => _handleTap(side: TapSide.right),
+            onTapDown: isActive ? (_) => _handleTap(side: TapSide.right) : null,
             child: Center(
               child: TapButton(
                 label: 'R',
@@ -296,7 +422,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildOneFingerLayout(bool isActive) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _handleTap(),
+      onTapDown: isActive ? (_) => _handleTap() : null,
       child: Center(
         child: TapButton(
           label: 'TAP',

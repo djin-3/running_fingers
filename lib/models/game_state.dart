@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 /// タップの側（2本モード用）
@@ -6,10 +7,16 @@ enum TapSide { left, right }
 
 /// ゲームの進行状態
 enum GamePhase {
-  /// 開始待ち
+  /// スタートボタン待ち
   ready,
 
-  /// プレイ中
+  /// "On your mark" 表示中
+  onYourMark,
+
+  /// "Set" 表示中（ランダム待機、フライング検出対象）
+  set,
+
+  /// "Go!!" プレイ中
   playing,
 
   /// 完了
@@ -17,12 +24,6 @@ enum GamePhase {
 }
 
 /// ゲームの状態管理
-///
-/// Phase 1 プロトタイプ:
-/// - 左右交互タップの検出
-/// - 同じ側連続タップの無効化
-/// - 基本的なカウント機能
-/// - タイマー計測
 class GameState extends ChangeNotifier {
   final int fingerMode; // 1 or 2
   final bool isTimeAttack;
@@ -55,9 +56,33 @@ class GameState extends ChangeNotifier {
   TapSide? _invalidTapSide;
   TapSide? get invalidTapSide => _invalidTapSide;
 
+  /// フライング関連
+  bool _hadFalseStart = false;
+  bool get hadFalseStart => _hadFalseStart;
+
+  /// タイムアタック: フライングペナルティによるタップ無効期間（秒）
+  static const double _falseStartPenaltySeconds = 3.0;
+
+  /// タップチャレンジ: フライングペナルティ（マイナスカウント）
+  static const int _falseStartPenaltyTaps = 10;
+
+  /// タイムアタック: ペナルティ中か
+  bool get isInPenalty {
+    if (!isTimeAttack || !_hadFalseStart) return false;
+    return _stopwatch.elapsedMilliseconds < (_falseStartPenaltySeconds * 1000);
+  }
+
+  /// ペナルティ残り時間（秒）
+  double get penaltyRemainingSeconds {
+    if (!isInPenalty) return 0;
+    final elapsed = _stopwatch.elapsedMilliseconds / 1000;
+    return (_falseStartPenaltySeconds - elapsed).clamp(0.0, _falseStartPenaltySeconds);
+  }
+
   /// タイマー関連
   Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
+  Timer? _startSequenceTimer;
 
   /// 経過時間（ミリ秒）
   int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
@@ -88,6 +113,35 @@ class GameState extends ChangeNotifier {
   /// タップチャレンジの制限時間（秒）
   static const double tapChallengeLimit = 10.0;
 
+  /// "On your mark" の表示時間（ミリ秒）
+  static const int _onYourMarkDuration = 1500;
+
+  /// "Set" のランダム待機時間の範囲（ミリ秒）
+  static const int _setMinDuration = 1500;
+  static const int _setMaxDuration = 3000;
+
+  final Random _random = Random();
+
+  /// スタート合図シーケンスを開始
+  void startSequence() {
+    if (_phase != GamePhase.ready) return;
+
+    _phase = GamePhase.onYourMark;
+    notifyListeners();
+
+    // "On your mark" → "Set"
+    _startSequenceTimer = Timer(const Duration(milliseconds: _onYourMarkDuration), () {
+      _phase = GamePhase.set;
+      notifyListeners();
+
+      // "Set" → "Go!!" （ランダム待機）
+      final setDuration = _setMinDuration + _random.nextInt(_setMaxDuration - _setMinDuration);
+      _startSequenceTimer = Timer(Duration(milliseconds: setDuration), () {
+        _startGame();
+      });
+    });
+  }
+
   /// タップを処理する
   ///
   /// [side] は2本モードの場合にどちら側がタップされたかを示す。
@@ -95,12 +149,20 @@ class GameState extends ChangeNotifier {
   ///
   /// 戻り値: タップが有効だったかどうか
   bool handleTap({TapSide? side}) {
-    // ゲーム終了後はタップを無視
-    if (_phase == GamePhase.finished) return false;
+    // スタート前・完了後はタップを無視
+    if (_phase == GamePhase.ready || _phase == GamePhase.onYourMark || _phase == GamePhase.finished) {
+      return false;
+    }
 
-    // 最初のタップでゲーム開始
-    if (_phase == GamePhase.ready) {
-      _startGame();
+    // "Set" 中のタップ = フライング
+    if (_phase == GamePhase.set) {
+      _handleFalseStart();
+      return false;
+    }
+
+    // プレイ中: タイムアタックのペナルティ期間中はタップ無効
+    if (isInPenalty) {
+      return false;
     }
 
     // 2本モード: 同じ側の連続タップを無効化
@@ -110,7 +172,6 @@ class GameState extends ChangeNotifier {
       _invalidTapSide = side;
       notifyListeners();
 
-      // 少し遅延してフィードバックをリセット
       Future.delayed(const Duration(milliseconds: 200), () {
         _lastTapWasInvalid = false;
         _invalidTapSide = null;
@@ -135,12 +196,27 @@ class GameState extends ChangeNotifier {
     return true;
   }
 
+  /// フライング処理
+  void _handleFalseStart() {
+    _hadFalseStart = true;
+    _startSequenceTimer?.cancel();
+
+    // 即座にゲーム開始（ペナルティ付き）
+    if (!isTimeAttack) {
+      // タップチャレンジ: マイナスからカウント開始
+      _tapCount = -_falseStartPenaltyTaps;
+    }
+    // タイムアタック: ペナルティ秒数はタイマー開始後に isInPenalty で制御
+
+    _startGame();
+  }
+
   void _startGame() {
     _phase = GamePhase.playing;
     _stopwatch = Stopwatch()..start();
 
-    // タップチャレンジ: タイマーで制限時間を監視
     if (!isTimeAttack) {
+      // タップチャレンジ: タイマーで制限時間を監視
       _timer = Timer.periodic(const Duration(milliseconds: 10), (_) {
         if (_stopwatch.elapsedMilliseconds >= (tapChallengeLimit * 1000).toInt()) {
           _finishGame();
@@ -153,6 +229,8 @@ class GameState extends ChangeNotifier {
         notifyListeners();
       });
     }
+
+    notifyListeners();
   }
 
   void _finishGame() {
@@ -171,15 +249,19 @@ class GameState extends ChangeNotifier {
     _lastTapSide = null;
     _lastTapWasInvalid = false;
     _invalidTapSide = null;
+    _hadFalseStart = false;
     _stopwatch = Stopwatch();
     _timer?.cancel();
     _timer = null;
+    _startSequenceTimer?.cancel();
+    _startSequenceTimer = null;
     notifyListeners();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _startSequenceTimer?.cancel();
     super.dispose();
   }
 }
