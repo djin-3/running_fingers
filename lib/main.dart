@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'models/record_data.dart';
 import 'screens/game_screen.dart';
+import 'services/storage_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,8 +33,63 @@ class RunningFingersApp extends StatelessWidget {
 }
 
 /// ホーム画面: 操作モードとゲームモードの選択
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // best[fingerMode][isTimeAttack]
+  final Map<String, RecordData?> _bests = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBests();
+  }
+
+  Future<void> _loadBests() async {
+    final results = await Future.wait([
+      StorageService.getBest(fingerMode: 2, isTimeAttack: true),
+      StorageService.getBest(fingerMode: 2, isTimeAttack: false),
+      StorageService.getBest(fingerMode: 1, isTimeAttack: true),
+      StorageService.getBest(fingerMode: 1, isTimeAttack: false),
+    ]);
+    if (mounted) {
+      setState(() {
+        _bests['2_ta'] = results[0];
+        _bests['2_tc'] = results[1];
+        _bests['1_ta'] = results[2];
+        _bests['1_tc'] = results[3];
+      });
+    }
+  }
+
+  String? _bestLabel(int fingerMode, bool isTimeAttack) {
+    final key = '${fingerMode}_${isTimeAttack ? 'ta' : 'tc'}';
+    final best = _bests[key];
+    if (best == null) return null;
+    if (isTimeAttack) {
+      return 'ベスト: ${best.value.toStringAsFixed(2)}秒';
+    } else {
+      return 'ベスト: ${best.value.toInt()}回';
+    }
+  }
+
+  Future<void> _startGame(BuildContext context, {required int fingerMode, required bool isTimeAttack}) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => GameScreen(
+          fingerMode: fingerMode,
+          isTimeAttack: isTimeAttack,
+        ),
+      ),
+    );
+    // ゲームから戻ったらベスト記録を再読み込み
+    _loadBests();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +127,7 @@ class HomeScreen extends StatelessWidget {
                       child: _ModeButton(
                         label: 'タイムアタック\n100回',
                         subtitle: '100回タップの時間を計測',
+                        best: _bestLabel(2, true),
                         onTap: () => _startGame(context, fingerMode: 2, isTimeAttack: true),
                       ),
                     ),
@@ -78,6 +136,7 @@ class HomeScreen extends StatelessWidget {
                       child: _ModeButton(
                         label: 'タップチャレンジ\n10秒',
                         subtitle: '10秒間のタップ数を計測',
+                        best: _bestLabel(2, false),
                         onTap: () => _startGame(context, fingerMode: 2, isTimeAttack: false),
                       ),
                     ),
@@ -96,6 +155,7 @@ class HomeScreen extends StatelessWidget {
                       child: _ModeButton(
                         label: 'タイムアタック\n100回',
                         subtitle: '100回タップの時間を計測',
+                        best: _bestLabel(1, true),
                         onTap: () => _startGame(context, fingerMode: 1, isTimeAttack: true),
                       ),
                     ),
@@ -104,6 +164,7 @@ class HomeScreen extends StatelessWidget {
                       child: _ModeButton(
                         label: 'タップチャレンジ\n10秒',
                         subtitle: '10秒間のタップ数を計測',
+                        best: _bestLabel(1, false),
                         onTap: () => _startGame(context, fingerMode: 1, isTimeAttack: false),
                       ),
                     ),
@@ -116,28 +177,19 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
-  void _startGame(BuildContext context, {required int fingerMode, required bool isTimeAttack}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => GameScreen(
-          fingerMode: fingerMode,
-          isTimeAttack: isTimeAttack,
-        ),
-      ),
-    );
-  }
 }
 
 class _ModeButton extends StatelessWidget {
   final String label;
   final String subtitle;
+  final String? best;
   final VoidCallback onTap;
 
   const _ModeButton({
     required this.label,
     required this.subtitle,
     required this.onTap,
+    this.best,
   });
 
   @override
@@ -167,6 +219,17 @@ class _ModeButton extends StatelessWidget {
                       color: Colors.grey,
                     ),
               ),
+              if (best != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  best!,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.amber,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
             ],
           ),
         ),

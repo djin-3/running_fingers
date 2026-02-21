@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/game_state.dart';
+import '../models/record_data.dart';
 import '../widgets/tap_button.dart';
+import 'result_screen.dart';
 
 /// ゲーム画面
 ///
@@ -40,7 +42,40 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _onGameStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    if (_gameState.phase == GamePhase.finished && !_navigatedToResult) {
+      _navigatedToResult = true;
+      _navigateToResult();
+    }
+  }
+
+  bool _navigatedToResult = false;
+
+  Future<void> _navigateToResult() async {
+    final record = RecordData(
+      value: widget.isTimeAttack
+          ? _gameState.elapsedMilliseconds / 1000.0
+          : _gameState.tapCount.toDouble(),
+      date: DateTime.now(),
+      hadFalseStart: _gameState.hadFalseStart,
+      usedTicket: false,
+      fingerMode: widget.fingerMode,
+    );
+
+    if (!mounted) return;
+    final retry = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ResultScreen(
+          record: record,
+          isTimeAttack: widget.isTimeAttack,
+        ),
+      ),
+    );
+
+    if (mounted && retry == true) {
+      _resetGame();
+    }
   }
 
   @override
@@ -55,6 +90,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _resetGame() {
+    _navigatedToResult = false;
     _gameState.reset();
   }
 
@@ -249,52 +285,10 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  /// 完了画面
+  /// 完了画面（リザルト画面への遷移待ち）
   Widget _buildFinishedView(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '完了！',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Colors.cyan,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 24),
-          _buildMainValue(context),
-          const SizedBox(height: 8),
-          _buildSubInfo(context),
-          // フライング情報
-          if (_gameState.hadFalseStart) ...[
-            const SizedBox(height: 12),
-            Text(
-              'フライングペナルティあり',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.red,
-                  ),
-            ),
-          ],
-          const SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton.icon(
-                onPressed: _resetGame,
-                icon: const Icon(Icons.replay),
-                label: const Text('もう一度'),
-              ),
-              const SizedBox(width: 16),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.home),
-                label: const Text('メニュー'),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return const Center(
+      child: CircularProgressIndicator(),
     );
   }
 
