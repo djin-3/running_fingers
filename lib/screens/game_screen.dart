@@ -151,19 +151,28 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  /// 中央エリア: フェーズに応じた表示切り替え（AnimatedSwitcherで滑らかに遷移）
+  /// 中央エリア: フェーズに応じた表示切り替え
+  ///
+  /// onYourMark と set は 'preparation' という同じキーでグループ化し、
+  /// 外側のスケールアニメーションを起こさない。
+  /// 代わりに内部で穏やかなフェードのみで切り替える。
   Widget _buildCenterArea(BuildContext context) {
+    String outerKey;
     Widget child;
+
     switch (_gameState.phase) {
       case GamePhase.ready:
+        outerKey = 'ready';
         child = _buildReadyView(context);
       case GamePhase.onYourMark:
-        child = _buildStartSequenceView(context, 'On your mark', Colors.amber);
       case GamePhase.set:
-        child = _buildStartSequenceView(context, 'Set', Colors.orange);
+        outerKey = 'preparation';
+        child = _buildPreparationView(context);
       case GamePhase.playing:
+        outerKey = 'playing';
         child = _buildPlayingView(context);
       case GamePhase.finished:
+        outerKey = 'finished';
         child = _buildFinishedView(context);
     }
 
@@ -179,8 +188,45 @@ class _GameScreenState extends State<GameScreen> {
         );
       },
       child: KeyedSubtree(
-        key: ValueKey(_gameState.phase),
+        key: ValueKey(outerKey),
         child: child,
+      ),
+    );
+  }
+
+  /// "On your mark" / "Set" 準備フェーズ
+  ///
+  /// フェードのみで穏やかに切り替え（スケールなし）。
+  /// "Set" フェーズでは「まだ...」インジケーターを表示。
+  Widget _buildPreparationView(BuildContext context) {
+    final isOnYourMark = _gameState.phase == GamePhase.onYourMark;
+    final text = isOnYourMark ? 'On your mark' : 'Set';
+    final color = isOnYourMark ? Colors.amber : Colors.orange;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      transitionBuilder: (child, animation) {
+        // フェードのみ: スケールなしで穏やかに切り替え
+        return FadeTransition(opacity: animation, child: child);
+      },
+      child: Center(
+        key: ValueKey(text),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              text,
+              style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            if (!isOnYourMark) ...[
+              const SizedBox(height: 20),
+              const _WaitingDots(),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -217,33 +263,6 @@ class _GameScreenState extends State<GameScreen> {
               child: const Text('スタート'),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  /// スタート合図シーケンス表示（"On your mark" / "Set"）
-  Widget _buildStartSequenceView(BuildContext context, String text, Color color) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            text,
-            style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          if (_gameState.phase == GamePhase.set) ...[
-            const SizedBox(height: 16),
-            Text(
-              '待て...',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey,
-                  ),
-            ),
-          ],
         ],
       ),
     );
@@ -518,6 +537,54 @@ class _GameScreenState extends State<GameScreen> {
               size: buttonSize,
             ),
           ),
+        );
+      },
+    );
+  }
+}
+
+/// "Set" フェーズ中の点滅インジケーター
+///
+/// 「まだ...」と表示し、ドットが1→2→3と増えてループする。
+/// プレイヤーに「Go! ではない、まだ待て」を直感的に伝える。
+class _WaitingDots extends StatefulWidget {
+  const _WaitingDots();
+
+  @override
+  State<_WaitingDots> createState() => _WaitingDotsState();
+}
+
+class _WaitingDotsState extends State<_WaitingDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final dotCount = (_controller.value * 3).floor() + 1;
+        final dots = '.' * dotCount;
+        return Text(
+          'まだ$dots',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.orange.withValues(alpha: 0.6),
+              ),
         );
       },
     );
