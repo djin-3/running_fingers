@@ -197,7 +197,6 @@ class _GameScreenState extends State<GameScreen> {
   /// "On your mark" / "Set" 準備フェーズ
   ///
   /// フェードのみで穏やかに切り替え（スケールなし）。
-  /// "Set" フェーズでは「まだ...」インジケーターを表示。
   Widget _buildPreparationView(BuildContext context) {
     final isOnYourMark = _gameState.phase == GamePhase.onYourMark;
     final text = isOnYourMark ? 'On your mark' : 'Set';
@@ -221,10 +220,6 @@ class _GameScreenState extends State<GameScreen> {
                     fontWeight: FontWeight.bold,
                   ),
             ),
-            if (!isOnYourMark) ...[
-              const SizedBox(height: 20),
-              const _WaitingDots(),
-            ],
           ],
         ),
       ),
@@ -543,50 +538,3 @@ class _GameScreenState extends State<GameScreen> {
   }
 }
 
-/// "Set" フェーズ中の点滅インジケーター
-///
-/// 「まだ...」と表示し、ドットが1→2→3と増えてループする。
-/// プレイヤーに「Go! ではない、まだ待て」を直感的に伝える。
-class _WaitingDots extends StatefulWidget {
-  const _WaitingDots();
-
-  @override
-  State<_WaitingDots> createState() => _WaitingDotsState();
-}
-
-class _WaitingDotsState extends State<_WaitingDots>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final dotCount = (_controller.value * 3).floor() + 1;
-        final dots = '.' * dotCount;
-        return Text(
-          'まだ$dots',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.orange.withValues(alpha: 0.6),
-              ),
-        );
-      },
-    );
-  }
-}
