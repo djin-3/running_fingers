@@ -19,16 +19,33 @@ class ResultScreen extends StatefulWidget {
   State<ResultScreen> createState() => _ResultScreenState();
 }
 
-class _ResultScreenState extends State<ResultScreen> {
+class _ResultScreenState extends State<ResultScreen>
+    with SingleTickerProviderStateMixin {
   RecordData? _best;
   List<RecordData> _history = [];
   bool _isNewBest = false;
   bool _loading = true;
 
+  late AnimationController _celebrationController;
+  late Animation<double> _celebrationAnimation;
+
   @override
   void initState() {
     super.initState();
+    _celebrationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _celebrationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _celebrationController, curve: Curves.easeInOut),
+    );
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _celebrationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -48,6 +65,9 @@ class _ResultScreenState extends State<ResultScreen> {
         _isNewBest = best?.date == widget.record.date;
         _loading = false;
       });
+      if (_isNewBest) {
+        _celebrationController.repeat(reverse: true);
+      }
     }
   }
 
@@ -145,6 +165,32 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Widget _buildResultCard(BuildContext context) {
+    if (_isNewBest) {
+      return AnimatedBuilder(
+        animation: _celebrationAnimation,
+        builder: (context, child) {
+          final glow = _celebrationAnimation.value;
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withValues(alpha: glow * 0.6),
+                  blurRadius: 20 + glow * 10,
+                  spreadRadius: 2 + glow * 4,
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: _buildResultCardInner(context),
+      );
+    }
+    return _buildResultCardInner(context);
+  }
+
+  Widget _buildResultCardInner(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),

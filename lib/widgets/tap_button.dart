@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// タップボタンウィジェット
@@ -24,19 +25,24 @@ class TapButton extends StatefulWidget {
   State<TapButton> createState() => _TapButtonState();
 }
 
-class _TapButtonState extends State<TapButton> with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
+class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
+  late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
+  late AnimationController _shakeController;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    _scaleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
     );
   }
 
@@ -44,20 +50,20 @@ class _TapButtonState extends State<TapButton> with SingleTickerProviderStateMix
   void didUpdateWidget(TapButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isTapped && !oldWidget.isTapped) {
-      _animationController.forward();
+      _scaleController.forward();
     } else if (!widget.isTapped && oldWidget.isTapped) {
-      _animationController.reverse();
+      _scaleController.reverse();
     }
     if (widget.isInvalid && !oldWidget.isInvalid) {
-      _animationController.forward().then((_) {
-        _animationController.reverse();
-      });
+      _scaleController.forward().then((_) => _scaleController.reverse());
+      _shakeController.forward(from: 0);
     }
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _scaleController.dispose();
+    _shakeController.dispose();
     super.dispose();
   }
 
@@ -69,41 +75,55 @@ class _TapButtonState extends State<TapButton> with SingleTickerProviderStateMix
             ? Theme.of(context).colorScheme.primary
             : Colors.grey.shade700;
 
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        width: widget.size,
-        height: widget.size,
-        decoration: BoxDecoration(
-          color: widget.isTapped ? baseColor.withValues(alpha: 0.8) : baseColor,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: widget.isInvalid
-                ? Colors.red
-                : Colors.white.withValues(alpha: 0.3),
-            width: widget.isInvalid ? 3 : 2,
-          ),
-          boxShadow: [
-            if (widget.isTapped)
-              BoxShadow(
-                color: baseColor.withValues(alpha: 0.5),
-                blurRadius: 20,
-                spreadRadius: 4,
+    return AnimatedBuilder(
+      animation: Listenable.merge([_scaleAnimation, _shakeController]),
+      builder: (context, _) {
+        // 減衰する横揺れ: 時間が経つにつれて振幅が小さくなる
+        final t = _shakeController.value;
+        final shakeOffset = math.sin(t * math.pi * 5) * 10 * (1 - t);
+
+        return Transform.translate(
+          offset: Offset(shakeOffset, 0),
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 100),
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                color: widget.isTapped
+                    ? baseColor.withValues(alpha: 0.8)
+                    : baseColor,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: widget.isInvalid
+                      ? Colors.red
+                      : Colors.white.withValues(alpha: 0.3),
+                  width: widget.isInvalid ? 3 : 2,
+                ),
+                boxShadow: [
+                  if (widget.isTapped)
+                    BoxShadow(
+                      color: baseColor.withValues(alpha: 0.5),
+                      blurRadius: 20,
+                      spreadRadius: 4,
+                    ),
+                ],
               ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            widget.label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              child: Center(
+                child: Text(
+                  widget.label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
