@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/game_state.dart';
 import '../models/record_data.dart';
 import '../widgets/tap_button.dart';
@@ -86,7 +87,12 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleTap({TapSide? side}) {
-    _gameState.handleTap(side: side);
+    final isValid = _gameState.handleTap(side: side);
+    if (isValid) {
+      HapticFeedback.lightImpact();
+    } else {
+      HapticFeedback.mediumImpact();
+    }
   }
 
   void _resetGame() {
@@ -145,20 +151,38 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  /// 中央エリア: フェーズに応じた表示切り替え
+  /// 中央エリア: フェーズに応じた表示切り替え（AnimatedSwitcherで滑らかに遷移）
   Widget _buildCenterArea(BuildContext context) {
+    Widget child;
     switch (_gameState.phase) {
       case GamePhase.ready:
-        return _buildReadyView(context);
+        child = _buildReadyView(context);
       case GamePhase.onYourMark:
-        return _buildStartSequenceView(context, 'On your mark', Colors.amber);
+        child = _buildStartSequenceView(context, 'On your mark', Colors.amber);
       case GamePhase.set:
-        return _buildStartSequenceView(context, 'Set', Colors.orange);
+        child = _buildStartSequenceView(context, 'Set', Colors.orange);
       case GamePhase.playing:
-        return _buildPlayingView(context);
+        child = _buildPlayingView(context);
       case GamePhase.finished:
-        return _buildFinishedView(context);
+        child = _buildFinishedView(context);
     }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.85, end: 1.0).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(
+        key: ValueKey(_gameState.phase),
+        child: child,
+      ),
+    );
   }
 
   /// スタートボタン表示
