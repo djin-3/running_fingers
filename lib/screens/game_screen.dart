@@ -153,14 +153,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(child: _buildCenterArea(context)),
-            _buildTapArea(context),
-          ],
-        ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context),
+                Expanded(child: _buildCenterArea(context)),
+                _buildTapArea(context),
+              ],
+            ),
+          ),
+          IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _gameState.phase == GamePhase.playing && _gameState.effectLevel >= 4
+                  ? 1.0
+                  : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.center,
+                    radius: 1.5,
+                    colors: [
+                      Colors.transparent,
+                      Colors.lightBlueAccent.withValues(
+                        alpha: _gameState.effectLevel >= 5 ? 0.18 : 0.10,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -525,6 +551,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     isTapped: _leftTapped,
                     isInvalid: _gameState.invalidTapSide == TapSide.left,
                     isActive: isActive,
+                    effectLevel: _gameState.effectLevel,
                   ),
                 ),
               );
@@ -564,6 +591,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     isTapped: _rightTapped,
                     isInvalid: _gameState.invalidTapSide == TapSide.right,
                     isActive: isActive,
+                    effectLevel: _gameState.effectLevel,
                   ),
                 ),
               );
@@ -604,6 +632,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               isTapped: _centerTapped,
               isActive: isActive,
               size: buttonSize,
+              effectLevel: _gameState.effectLevel,
             ),
           ),
         );

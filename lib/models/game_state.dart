@@ -48,6 +48,15 @@ class GameState extends ChangeNotifier {
   TapSide? _lastTapSide;
   TapSide? get lastTapSide => _lastTapSide;
 
+  /// 連打速度（タップ/秒）
+  final List<int> _recentTapTimestamps = [];
+  double _currentTps = 0.0;
+  double get currentTps => _currentTps;
+
+  /// エフェクトレベル（1〜5）
+  int _effectLevel = 1;
+  int get effectLevel => _effectLevel;
+
   /// 最後のタップが無効だったか（UI フィードバック用）
   bool _lastTapWasInvalid = false;
   bool get lastTapWasInvalid => _lastTapWasInvalid;
@@ -184,6 +193,7 @@ class GameState extends ChangeNotifier {
     // 有効なタップ
     _tapCount++;
     _lastTapSide = side;
+    _updateTpsAndEffectLevel();
     _lastTapWasInvalid = false;
     _invalidTapSide = null;
 
@@ -194,6 +204,45 @@ class GameState extends ChangeNotifier {
 
     notifyListeners();
     return true;
+  }
+
+  /// 連打速度を計算してエフェクトレベルを更新
+  void _updateTpsAndEffectLevel() {
+    final now = _stopwatch.elapsedMilliseconds;
+    _recentTapTimestamps.add(now);
+    // 2秒以上前のタイムスタンプを除去（速度低下の即時反映）
+    _recentTapTimestamps.removeWhere((ts) => now - ts > 2000);
+    if (_recentTapTimestamps.length > 10) _recentTapTimestamps.removeAt(0);
+
+    if (_recentTapTimestamps.length < 2) {
+      _currentTps = 0.0;
+      _effectLevel = 1;
+      return;
+    }
+    final span = _recentTapTimestamps.last - _recentTapTimestamps.first;
+    if (span <= 0) {
+      _currentTps = 0.0;
+      _effectLevel = 1;
+      return;
+    }
+    _currentTps = (_recentTapTimestamps.length - 1) / (span / 1000.0);
+    _effectLevel = _calcEffectLevel(_currentTps);
+  }
+
+  int _calcEffectLevel(double tps) {
+    if (fingerMode == 1) {
+      if (tps >= 13) return 5;
+      if (tps >= 11) return 4;
+      if (tps >= 8)  return 3;
+      if (tps >= 5)  return 2;
+      return 1;
+    } else {
+      if (tps >= 23) return 5;
+      if (tps >= 20) return 4;
+      if (tps >= 15) return 3;
+      if (tps >= 10) return 2;
+      return 1;
+    }
   }
 
   /// フライング処理
@@ -250,6 +299,9 @@ class GameState extends ChangeNotifier {
     _lastTapWasInvalid = false;
     _invalidTapSide = null;
     _hadFalseStart = false;
+    _recentTapTimestamps.clear();
+    _currentTps = 0.0;
+    _effectLevel = 1;
     _stopwatch = Stopwatch();
     _timer?.cancel();
     _timer = null;
