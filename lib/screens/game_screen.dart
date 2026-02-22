@@ -526,6 +526,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     isInvalid: _gameState.invalidTapSide == TapSide.left,
                     isActive: isActive,
                     tapSpeed: _gameState.tapSpeed,
+                    fingerMode: widget.fingerMode,
                   ),
                 ),
               );
@@ -566,6 +567,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     isInvalid: _gameState.invalidTapSide == TapSide.right,
                     isActive: isActive,
                     tapSpeed: _gameState.tapSpeed,
+                    fingerMode: widget.fingerMode,
                   ),
                 ),
               );
@@ -607,6 +609,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               isActive: isActive,
               size: buttonSize,
               tapSpeed: _gameState.tapSpeed,
+              fingerMode: widget.fingerMode,
             ),
           ),
         );

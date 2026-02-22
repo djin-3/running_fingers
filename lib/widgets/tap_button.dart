@@ -12,6 +12,7 @@ class TapButton extends StatefulWidget {
   final bool isActive;
   final double size;
   final double tapSpeed;
+  final int fingerMode;
 
   const TapButton({
     super.key,
@@ -21,6 +22,7 @@ class TapButton extends StatefulWidget {
     this.isActive = true,
     this.size = 80,
     this.tapSpeed = 0.0,
+    this.fingerMode = 2,
   });
 
   @override
@@ -90,14 +92,18 @@ class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
 
   /// タップ速度に応じたレベル（0〜3）
   ///
-  /// - Level 0: 4 taps/sec 未満（通常）
-  /// - Level 1: 4〜7 taps/sec（少し速い）
-  /// - Level 2: 7〜10 taps/sec（かなり速い）
-  /// - Level 3: 10 taps/sec 以上（最速）
+  /// 1本モード: 5 / 10 / 15 taps/sec
+  /// 2本モード: 8 / 16 / 25 taps/sec
   int get _speedLevel {
-    if (widget.tapSpeed >= 10.0) return 3;
-    if (widget.tapSpeed >= 7.0) return 2;
-    if (widget.tapSpeed >= 4.0) return 1;
+    if (widget.fingerMode == 1) {
+      if (widget.tapSpeed >= 15.0) return 3;
+      if (widget.tapSpeed >= 10.0) return 2;
+      if (widget.tapSpeed >= 5.0) return 1;
+    } else {
+      if (widget.tapSpeed >= 25.0) return 3;
+      if (widget.tapSpeed >= 16.0) return 2;
+      if (widget.tapSpeed >= 8.0) return 1;
+    }
     return 0;
   }
 
