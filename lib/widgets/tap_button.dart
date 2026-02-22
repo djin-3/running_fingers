@@ -11,6 +11,7 @@ class TapButton extends StatefulWidget {
   final bool isInvalid;
   final bool isActive;
   final double size;
+  final int combo;
 
   const TapButton({
     super.key,
@@ -19,6 +20,7 @@ class TapButton extends StatefulWidget {
     this.isInvalid = false,
     this.isActive = true,
     this.size = 80,
+    this.combo = 0,
   });
 
   @override
@@ -86,6 +88,38 @@ class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  /// コンボに応じたレベル（0〜3）
+  int get _comboLevel {
+    if (widget.combo >= 60) return 3;
+    if (widget.combo >= 30) return 2;
+    if (widget.combo >= 10) return 1;
+    return 0;
+  }
+
+  /// コンボレベルに応じた波紋の最大半径倍率（2.0〜3.5）
+  double get _rippleMaxScale => 2.0 + _comboLevel * 0.5;
+
+  /// コンボレベルに応じたグロー強度
+  double get _glowIntensity => 0.5 + _comboLevel * 0.2;
+
+  /// コンボレベルに応じたグロー半径
+  double get _glowBlurRadius => 20.0 + _comboLevel * 10.0;
+
+  /// コンボレベルに応じたボーダー色（通常: 白30% → 高コンボ: ゴールド）
+  Color _borderColor(Color baseColor) {
+    if (widget.isInvalid) return Colors.red;
+    switch (_comboLevel) {
+      case 3:
+        return Colors.amber.withValues(alpha: 0.9);
+      case 2:
+        return Colors.greenAccent.withValues(alpha: 0.7);
+      case 1:
+        return Colors.lightBlueAccent.withValues(alpha: 0.5);
+      default:
+        return Colors.white.withValues(alpha: 0.3);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color baseColor = widget.isInvalid
@@ -94,12 +128,18 @@ class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
             ? Theme.of(context).colorScheme.primary
             : Colors.grey.shade700;
 
+    // 波紋の最大倍率をコンボに応じて変化させる
+    final rippleMaxScale = _rippleMaxScale;
+
     return AnimatedBuilder(
       animation: Listenable.merge([_scaleAnimation, _shakeController, _rippleController]),
       builder: (context, _) {
         // 減衰する横揺れ: 時間が経つにつれて振幅が小さくなる
         final t = _shakeController.value;
         final shakeOffset = math.sin(t * math.pi * 5) * 10 * (1 - t);
+
+        // 波紋半径をコンボレベルに応じてスケール
+        final currentRippleScale = 0.5 + (rippleMaxScale - 0.5) * _rippleRadius.value / 2.0;
 
         return Transform.translate(
           offset: Offset(shakeOffset, 0),
@@ -115,13 +155,13 @@ class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
                   // 波紋エフェクト（アニメーション中のみ表示）
                   if (_rippleController.isAnimating)
                     Container(
-                      width: widget.size * _rippleRadius.value,
-                      height: widget.size * _rippleRadius.value,
+                      width: widget.size * currentRippleScale,
+                      height: widget.size * currentRippleScale,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: baseColor.withValues(alpha: _rippleOpacity.value),
-                          width: 2.5,
+                          color: _borderColor(baseColor).withValues(alpha: _rippleOpacity.value),
+                          width: 2.5 + _comboLevel * 0.5,
                         ),
                       ),
                     ),
@@ -136,17 +176,15 @@ class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
                           : baseColor,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: widget.isInvalid
-                            ? Colors.red
-                            : Colors.white.withValues(alpha: 0.3),
-                        width: widget.isInvalid ? 3 : 2,
+                        color: _borderColor(baseColor),
+                        width: widget.isInvalid ? 3 : 2 + _comboLevel * 0.5,
                       ),
                       boxShadow: [
                         if (widget.isTapped)
                           BoxShadow(
-                            color: baseColor.withValues(alpha: 0.5),
-                            blurRadius: 20,
-                            spreadRadius: 4,
+                            color: baseColor.withValues(alpha: _glowIntensity),
+                            blurRadius: _glowBlurRadius,
+                            spreadRadius: 4 + _comboLevel * 2.0,
                           ),
                       ],
                     ),

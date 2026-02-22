@@ -56,6 +56,10 @@ class GameState extends ChangeNotifier {
   TapSide? _invalidTapSide;
   TapSide? get invalidTapSide => _invalidTapSide;
 
+  /// コンボカウンター（無効タップでリセット）
+  int _currentCombo = 0;
+  int get currentCombo => _currentCombo;
+
   /// フライング関連
   bool _hadFalseStart = false;
   bool get hadFalseStart => _hadFalseStart;
@@ -168,6 +172,7 @@ class GameState extends ChangeNotifier {
     // 2本モード: 同じ側の連続タップを無効化
     if (fingerMode == 2 && side != null && side == _lastTapSide) {
       _invalidTapCount++;
+      _currentCombo = 0;
       _lastTapWasInvalid = true;
       _invalidTapSide = side;
       notifyListeners();
@@ -183,6 +188,7 @@ class GameState extends ChangeNotifier {
 
     // 有効なタップ
     _tapCount++;
+    _currentCombo++;
     _lastTapSide = side;
     _lastTapWasInvalid = false;
     _invalidTapSide = null;
@@ -246,6 +252,7 @@ class GameState extends ChangeNotifier {
     _phase = GamePhase.ready;
     _tapCount = 0;
     _invalidTapCount = 0;
+    _currentCombo = 0;
     _lastTapSide = null;
     _lastTapWasInvalid = false;
     _invalidTapSide = null;
