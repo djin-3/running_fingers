@@ -20,7 +20,7 @@ class ResultScreen extends StatefulWidget {
 }
 
 class _ResultScreenState extends State<ResultScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   RecordData? _best;
   List<RecordData> _history = [];
   bool _isNewBest = false;
@@ -28,6 +28,9 @@ class _ResultScreenState extends State<ResultScreen>
 
   late AnimationController _celebrationController;
   late Animation<double> _celebrationAnimation;
+
+  late AnimationController _countUpController;
+  late Animation<double> _countUpAnimation;
 
   @override
   void initState() {
@@ -39,12 +42,24 @@ class _ResultScreenState extends State<ResultScreen>
     _celebrationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _celebrationController, curve: Curves.easeInOut),
     );
+
+    // 記録表示を0から実際の値までカウントアップ（easeOut で最後に落ち着く）
+    _countUpController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _countUpAnimation = Tween<double>(
+      begin: 0.0,
+      end: widget.record.value,
+    ).animate(CurvedAnimation(parent: _countUpController, curve: Curves.easeOut));
+
     _loadData();
   }
 
   @override
   void dispose() {
     _celebrationController.dispose();
+    _countUpController.dispose();
     super.dispose();
   }
 
@@ -65,6 +80,7 @@ class _ResultScreenState extends State<ResultScreen>
         _isNewBest = best?.date == widget.record.date;
         _loading = false;
       });
+      _countUpController.forward();
       if (_isNewBest) {
         _celebrationController.repeat(reverse: true);
       }
@@ -202,12 +218,15 @@ class _ResultScreenState extends State<ResultScreen>
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 4),
-            Text(
-              _formatValue(widget.record.value),
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                  ),
+            AnimatedBuilder(
+              animation: _countUpAnimation,
+              builder: (context, _) => Text(
+                _formatValue(_countUpAnimation.value),
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
+              ),
             ),
             if (widget.record.hadFalseStart) ...[
               const SizedBox(height: 4),
