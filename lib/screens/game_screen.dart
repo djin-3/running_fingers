@@ -26,11 +26,20 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late GameState _gameState;
   bool _leftTapped = false;
   bool _rightTapped = false;
   bool _centerTapped = false;
+
+  // "Go!!" バウンス
+  bool _goAnimTriggered = false;
+  late AnimationController _goAnimController;
+  late Animation<double> _goScaleAnim;
+
+  // "Set" パルス
+  late AnimationController _setPulseController;
+  late Animation<double> _setPulseAnim;
 
   @override
   void initState() {
@@ -40,11 +49,46 @@ class _GameScreenState extends State<GameScreen> {
       isTimeAttack: widget.isTimeAttack,
     );
     _gameState.addListener(_onGameStateChanged);
+
+    // "Go!!" バウンス: 大→通常サイズ（elasticOut でバネ感）
+    _goAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _goScaleAnim = Tween<double>(begin: 1.8, end: 1.0).animate(
+      CurvedAnimation(parent: _goAnimController, curve: Curves.elasticOut),
+    );
+
+    // "Set" パルス: 微妙な拡縮を繰り返して緊張感を演出
+    _setPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _setPulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
+      CurvedAnimation(parent: _setPulseController, curve: Curves.easeInOut),
+    );
   }
 
   void _onGameStateChanged() {
     if (!mounted) return;
     setState(() {});
+
+    // "Go!!" バウンスをゲーム開始時に一度だけ起動
+    if (_gameState.phase == GamePhase.playing && !_goAnimTriggered) {
+      _goAnimTriggered = true;
+      _goAnimController.forward(from: 0);
+    }
+
+    // "Set" 中はパルスを繰り返す、それ以外は止める
+    if (_gameState.phase == GamePhase.set) {
+      if (!_setPulseController.isAnimating) {
+        _setPulseController.repeat(reverse: true);
+      }
+    } else if (_setPulseController.isAnimating) {
+      _setPulseController.stop();
+      _setPulseController.value = 0;
+    }
+
     if (_gameState.phase == GamePhase.finished && !_navigatedToResult) {
       _navigatedToResult = true;
       _navigateToResult();
@@ -83,6 +127,8 @@ class _GameScreenState extends State<GameScreen> {
   void dispose() {
     _gameState.removeListener(_onGameStateChanged);
     _gameState.dispose();
+    _goAnimController.dispose();
+    _setPulseController.dispose();
     super.dispose();
   }
 
@@ -97,6 +143,10 @@ class _GameScreenState extends State<GameScreen> {
 
   void _resetGame() {
     _navigatedToResult = false;
+    _goAnimTriggered = false;
+    _goAnimController.reset();
+    _setPulseController.stop();
+    _setPulseController.value = 0;
     _gameState.reset();
   }
 
@@ -213,13 +263,30 @@ class _GameScreenState extends State<GameScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              text,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
+            // "Set" はパルスで緊張感、"On your mark" は静的表示
+            if (!isOnYourMark)
+              AnimatedBuilder(
+                animation: _setPulseAnim,
+                builder: (context, child) => Transform.scale(
+                  scale: _setPulseAnim.value,
+                  child: child,
+                ),
+                child: Text(
+                  text,
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              )
+            else
+              Text(
+                text,
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
           ],
         ),
       ),
@@ -294,15 +361,22 @@ class _GameScreenState extends State<GameScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          // "Go!!" 表示（開始直後）
+          // "Go!!" 表示（開始直後）: バウンスで登場
           if (_gameState.elapsedMilliseconds < 800)
-            Text(
-              'Go!!',
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 64,
-                  ),
+            AnimatedBuilder(
+              animation: _goScaleAnim,
+              builder: (context, child) => Transform.scale(
+                scale: _goScaleAnim.value,
+                child: child,
+              ),
+              child: Text(
+                'Go!!',
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 64,
+                    ),
+              ),
             )
           else
             Text(
