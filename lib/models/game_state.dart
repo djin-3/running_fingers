@@ -56,9 +56,22 @@ class GameState extends ChangeNotifier {
   TapSide? _invalidTapSide;
   TapSide? get invalidTapSide => _invalidTapSide;
 
-  /// コンボカウンター（無効タップでリセット）
-  int _currentCombo = 0;
-  int get currentCombo => _currentCombo;
+  /// タップ速度計算用: 直近5タップのタイムスタンプ（エポックms）
+  static const int _speedWindowSize = 5;
+  final List<int> _recentTapTimes = [];
+
+  /// 現在のタップ速度（タップ/秒）
+  ///
+  /// 直近5タップのタイムスパンから算出。
+  /// 最後のタップから500ms以上経過していたら0を返す。
+  double get tapSpeed {
+    if (_recentTapTimes.length < 2) return 0.0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _recentTapTimes.last > 500) return 0.0;
+    final span = _recentTapTimes.last - _recentTapTimes.first;
+    if (span <= 0) return 0.0;
+    return (_recentTapTimes.length - 1) / span * 1000.0;
+  }
 
   /// フライング関連
   bool _hadFalseStart = false;
@@ -172,7 +185,6 @@ class GameState extends ChangeNotifier {
     // 2本モード: 同じ側の連続タップを無効化
     if (fingerMode == 2 && side != null && side == _lastTapSide) {
       _invalidTapCount++;
-      _currentCombo = 0;
       _lastTapWasInvalid = true;
       _invalidTapSide = side;
       notifyListeners();
@@ -188,7 +200,10 @@ class GameState extends ChangeNotifier {
 
     // 有効なタップ
     _tapCount++;
-    _currentCombo++;
+    _recentTapTimes.add(DateTime.now().millisecondsSinceEpoch);
+    if (_recentTapTimes.length > _speedWindowSize) {
+      _recentTapTimes.removeAt(0);
+    }
     _lastTapSide = side;
     _lastTapWasInvalid = false;
     _invalidTapSide = null;
@@ -252,7 +267,7 @@ class GameState extends ChangeNotifier {
     _phase = GamePhase.ready;
     _tapCount = 0;
     _invalidTapCount = 0;
-    _currentCombo = 0;
+    _recentTapTimes.clear();
     _lastTapSide = null;
     _lastTapWasInvalid = false;
     _invalidTapSide = null;

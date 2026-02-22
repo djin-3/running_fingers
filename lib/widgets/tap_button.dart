@@ -11,7 +11,7 @@ class TapButton extends StatefulWidget {
   final bool isInvalid;
   final bool isActive;
   final double size;
-  final int combo;
+  final double tapSpeed;
 
   const TapButton({
     super.key,
@@ -20,7 +20,7 @@ class TapButton extends StatefulWidget {
     this.isInvalid = false,
     this.isActive = true,
     this.size = 80,
-    this.combo = 0,
+    this.tapSpeed = 0.0,
   });
 
   @override
@@ -88,27 +88,32 @@ class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  /// コンボに応じたレベル（0〜3）
-  int get _comboLevel {
-    if (widget.combo >= 60) return 3;
-    if (widget.combo >= 30) return 2;
-    if (widget.combo >= 10) return 1;
+  /// タップ速度に応じたレベル（0〜3）
+  ///
+  /// - Level 0: 4 taps/sec 未満（通常）
+  /// - Level 1: 4〜7 taps/sec（少し速い）
+  /// - Level 2: 7〜10 taps/sec（かなり速い）
+  /// - Level 3: 10 taps/sec 以上（最速）
+  int get _speedLevel {
+    if (widget.tapSpeed >= 10.0) return 3;
+    if (widget.tapSpeed >= 7.0) return 2;
+    if (widget.tapSpeed >= 4.0) return 1;
     return 0;
   }
 
-  /// コンボレベルに応じた波紋の最大半径倍率（2.0〜3.5）
-  double get _rippleMaxScale => 2.0 + _comboLevel * 0.5;
+  /// レベルに応じた波紋の最大半径倍率（2.0〜3.5）
+  double get _rippleMaxScale => 2.0 + _speedLevel * 0.5;
 
-  /// コンボレベルに応じたグロー強度
-  double get _glowIntensity => 0.5 + _comboLevel * 0.2;
+  /// レベルに応じたグロー強度
+  double get _glowIntensity => 0.5 + _speedLevel * 0.2;
 
-  /// コンボレベルに応じたグロー半径
-  double get _glowBlurRadius => 20.0 + _comboLevel * 10.0;
+  /// レベルに応じたグロー半径
+  double get _glowBlurRadius => 20.0 + _speedLevel * 10.0;
 
-  /// コンボレベルに応じたボーダー色（通常: 白30% → 高コンボ: ゴールド）
+  /// レベルに応じたボーダー色（通常: 白30% → 最速: ゴールド）
   Color _borderColor(Color baseColor) {
     if (widget.isInvalid) return Colors.red;
-    switch (_comboLevel) {
+    switch (_speedLevel) {
       case 3:
         return Colors.amber.withValues(alpha: 0.9);
       case 2:
@@ -161,7 +166,7 @@ class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: _borderColor(baseColor).withValues(alpha: _rippleOpacity.value),
-                          width: 2.5 + _comboLevel * 0.5,
+                          width: 2.5 + _speedLevel * 0.5,
                         ),
                       ),
                     ),
@@ -177,14 +182,14 @@ class _TapButtonState extends State<TapButton> with TickerProviderStateMixin {
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: _borderColor(baseColor),
-                        width: widget.isInvalid ? 3 : 2 + _comboLevel * 0.5,
+                        width: widget.isInvalid ? 3 : 2 + _speedLevel * 0.5,
                       ),
                       boxShadow: [
                         if (widget.isTapped)
                           BoxShadow(
                             color: baseColor.withValues(alpha: _glowIntensity),
                             blurRadius: _glowBlurRadius,
-                            spreadRadius: 4 + _comboLevel * 2.0,
+                            spreadRadius: 4 + _speedLevel * 2.0,
                           ),
                       ],
                     ),
