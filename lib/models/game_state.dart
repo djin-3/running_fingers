@@ -171,8 +171,9 @@ class GameState extends ChangeNotifier {
       return false;
     }
 
-    // プレイ中: タイムアタックのペナルティ期間中はタップ無効
-    if (isInPenalty) {
+    // プレイ中: タップチャレンジのペナルティ期間中はタップ無効
+    // タイムアタックはカウンターが -5 から増加する仕組みなのでブロックしない
+    if (!isTimeAttack && isInPenalty) {
       return false;
     }
 
