@@ -69,24 +69,26 @@ class GameState extends ChangeNotifier {
   bool _hadFalseStart = false;
   bool get hadFalseStart => _hadFalseStart;
 
-  /// タイムアタック: フライングペナルティによるタップ無効期間（秒）
-  static const double _falseStartPenaltySeconds = 3.0;
+  /// フライングペナルティ率（目標値の5%）
+  static const double _penaltyRate = 0.05;
 
-  /// タップチャレンジ: フライングペナルティ（マイナスカウント）
-  static const int _falseStartPenaltyTaps = 10;
-
-  /// タイムアタック: ペナルティ中か
+  /// ペナルティ中か（両モード対応）
   bool get isInPenalty {
-    if (!isTimeAttack || !_hadFalseStart) return false;
-    return _stopwatch.elapsedMilliseconds < (_falseStartPenaltySeconds * 1000);
+    if (!_hadFalseStart) return false;
+    return isTimeAttack
+        ? _tapCount < 0
+        : _stopwatch.elapsedMilliseconds < 500;
   }
 
-  /// ペナルティ残り時間（秒）
-  double get penaltyRemainingSeconds {
-    if (!isInPenalty) return 0;
-    final elapsed = _stopwatch.elapsedMilliseconds / 1000;
-    return (_falseStartPenaltySeconds - elapsed).clamp(0.0, _falseStartPenaltySeconds);
-  }
+  /// ペナルティ残り時間（秒）- タップチャレンジ用
+  double get penaltyRemainingSeconds =>
+      !isTimeAttack && _hadFalseStart
+          ? max(0, 0.5 - _stopwatch.elapsedMilliseconds / 1000.0)
+          : 0;
+
+  /// ペナルティ残りタップ数 - タイムアタック用
+  int get penaltyTapsRemaining =>
+      isTimeAttack && _hadFalseStart ? (-_tapCount).clamp(0, timeAttackTarget) : 0;
 
   /// タイマー関連
   Stopwatch _stopwatch = Stopwatch();
@@ -251,11 +253,11 @@ class GameState extends ChangeNotifier {
     _startSequenceTimer?.cancel();
 
     // 即座にゲーム開始（ペナルティ付き）
-    if (!isTimeAttack) {
-      // タップチャレンジ: マイナスからカウント開始
-      _tapCount = -_falseStartPenaltyTaps;
+    if (isTimeAttack) {
+      // タイムアタック: 目標の5%分マイナスからカウント開始
+      _tapCount = -(timeAttackTarget * _penaltyRate).round();
     }
-    // タイムアタック: ペナルティ秒数はタイマー開始後に isInPenalty で制御
+    // タップチャレンジ: isInPenalty の時間判定でカバー（tapCountはそのまま0）
 
     _startGame();
   }

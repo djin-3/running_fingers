@@ -405,7 +405,9 @@ class _GameScreenState extends State<GameScreen>
                   const SizedBox(width: 8),
                   Text(
                     _gameState.isInPenalty
-                        ? 'フライング！ペナルティ中 ${_gameState.penaltyRemainingSeconds.toStringAsFixed(1)}秒'
+                        ? (widget.isTimeAttack
+                            ? 'フライング！ペナルティ中 あと${_gameState.penaltyTapsRemaining}タップ'
+                            : 'フライング！ペナルティ中 ${_gameState.penaltyRemainingSeconds.toStringAsFixed(1)}秒')
                         : 'フライング！ペナルティ適用済み',
                     style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                   ),
