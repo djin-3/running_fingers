@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/game_state.dart';
 import '../models/record_data.dart';
 import '../widgets/tap_button.dart';
@@ -26,7 +27,8 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
+class _GameScreenState extends State<GameScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late GameState _gameState;
   bool _leftTapped = false;
   bool _rightTapped = false;
@@ -49,6 +51,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       isTimeAttack: widget.isTimeAttack,
     );
     _gameState.addListener(_onGameStateChanged);
+    WidgetsBinding.instance.addObserver(this);
 
     // "Go!!" バウンス: 大→通常サイズ（elasticOut でバネ感）
     _goAnimController = AnimationController(
@@ -89,6 +92,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _setPulseController.value = 0;
     }
 
+    // プレイ中はスリープ防止、終了時は解除
+    if (_gameState.phase == GamePhase.playing) {
+      WakelockPlus.enable();
+    } else if (_gameState.phase == GamePhase.finished) {
+      WakelockPlus.disable();
+    }
+
     if (_gameState.phase == GamePhase.finished && !_navigatedToResult) {
       _navigatedToResult = true;
       _navigateToResult();
@@ -125,11 +135,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    WakelockPlus.disable();
     _gameState.removeListener(_onGameStateChanged);
     _gameState.dispose();
     _goAnimController.dispose();
     _setPulseController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      final phase = _gameState.phase;
+      if (phase == GamePhase.playing ||
+          phase == GamePhase.onYourMark ||
+          phase == GamePhase.set) {
+        _gameState.reset();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) Navigator.of(context).pop();
+        });
+      }
+    }
   }
 
   void _handleTap({TapSide? side}) {
@@ -495,6 +522,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final isTappable = _gameState.phase == GamePhase.set ||
         _gameState.phase == GamePhase.playing;
 
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final twoFingerButtonSize = shortestSide * 0.20;
+    final oneFingerButtonSize = shortestSide * 0.25;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.4,
       decoration: BoxDecoration(
@@ -505,8 +536,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ),
       ),
       child: widget.fingerMode == 2
-          ? _buildTwoFingerLayout(isTappable)
-          : _buildOneFingerLayout(isTappable),
+          ? _buildTwoFingerLayout(isTappable, buttonSize: twoFingerButtonSize)
+          : _buildOneFingerLayout(isTappable, buttonSize: oneFingerButtonSize),
     );
   }
 
@@ -518,8 +549,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// 2本モード: 左右ボタン配置
-  Widget _buildTwoFingerLayout(bool isActive) {
-    const buttonSize = 80.0;
+  Widget _buildTwoFingerLayout(bool isActive, {required double buttonSize}) {
 
     return Row(
       children: [
@@ -551,6 +581,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     isTapped: _leftTapped,
                     isInvalid: _gameState.invalidTapSide == TapSide.left,
                     isActive: isActive,
+                    size: buttonSize,
                     effectLevel: _gameState.effectLevel,
                   ),
                 ),
@@ -591,6 +622,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     isTapped: _rightTapped,
                     isInvalid: _gameState.invalidTapSide == TapSide.right,
                     isActive: isActive,
+                    size: buttonSize,
                     effectLevel: _gameState.effectLevel,
                   ),
                 ),
@@ -603,8 +635,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   /// 1本モード: 中央ボタン配置
-  Widget _buildOneFingerLayout(bool isActive) {
-    const buttonSize = 100.0;
+  Widget _buildOneFingerLayout(bool isActive, {required double buttonSize}) {
 
     return LayoutBuilder(
       builder: (context, constraints) {
