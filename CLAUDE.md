@@ -18,7 +18,7 @@
 - テスト確認: GitHub Pages にWebデプロイ（本番ではWeb版は作らない）
 
 ## ビルド・デプロイ
-- GitHub Pagesへのデプロイは GitHub Actions で自動（masterへのpush時）
+- GitHub Pagesへのデプロイは GitHub Actions で自動（mainへのpush時）
 - ローカルPC（Windows）にFlutter SDK環境あり
 - このVPS上にはFlutter環境なし（設計・ドキュメント編集のみ）
 
