@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:confetti/confetti.dart';
 import '../models/record_data.dart';
 import '../services/storage_service.dart';
 
@@ -32,6 +33,11 @@ class _ResultScreenState extends State<ResultScreen>
   late AnimationController _countUpController;
   late Animation<double> _countUpAnimation;
 
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+
+  late ConfettiController _confettiController;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +59,19 @@ class _ResultScreenState extends State<ResultScreen>
       end: widget.record.value,
     ).animate(CurvedAnimation(parent: _countUpController, curve: Curves.easeOut));
 
+    // カードのバウンス登場アニメーション
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut));
+
+    // 紙吹雪コントローラー
+    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+
     _loadData();
   }
 
@@ -60,6 +79,8 @@ class _ResultScreenState extends State<ResultScreen>
   void dispose() {
     _celebrationController.dispose();
     _countUpController.dispose();
+    _scaleController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -81,8 +102,10 @@ class _ResultScreenState extends State<ResultScreen>
         _loading = false;
       });
       _countUpController.forward();
+      _scaleController.forward();
       if (_isNewBest) {
         _celebrationController.repeat(reverse: true);
+        _confettiController.play();
       }
     }
   }
@@ -121,29 +144,51 @@ class _ResultScreenState extends State<ResultScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  _buildHeader(context),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      child: Column(
-                        children: [
-                          _buildResultCard(context),
-                          const SizedBox(height: 16),
-                          if (_history.length > 1) _buildHistorySection(context),
-                        ],
+    return Stack(
+      children: [
+        Scaffold(
+          body: SafeArea(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
+                    children: [
+                      _buildHeader(context),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          child: Column(
+                            children: [
+                              ScaleTransition(
+                                scale: _scaleAnimation,
+                                child: _buildResultCard(context),
+                              ),
+                              const SizedBox(height: 16),
+                              if (_history.length > 1) _buildHistorySection(context),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                      _buildActions(context),
+                    ],
                   ),
-                  _buildActions(context),
-                ],
-              ),
-      ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.topCenter,
+          child: ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality.explosive,
+            shouldLoop: false,
+            colors: const [
+              Colors.amber,
+              Colors.orange,
+              Colors.cyan,
+              Colors.green,
+              Colors.pink,
+            ],
+          ),
+        ),
+      ],
     );
   }
 
