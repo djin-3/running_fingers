@@ -268,8 +268,8 @@ class _GameScreenState extends State<GameScreen>
     final hy = (buttonSize / 2) / size.height;
     // ヘッダー高さ（SafeAreaトップ + ヘッダーWidget約72px）
     final headerNormY = (MediaQuery.of(context).padding.top + 72) / size.height;
-    final x = norm.dx.clamp(hx, 1.0 - hx);
-    final y = norm.dy.clamp(math.max(hy, headerNormY), 1.0 - hy);
+    final x = norm.dx.clamp(hx, 1.0 - hx).toDouble();
+    final y = norm.dy.clamp(math.max(hy, headerNormY), 1.0 - hy).toDouble();
     var result = Offset(x, y);
 
     // 2. スタートボタンとの重なり禁止
