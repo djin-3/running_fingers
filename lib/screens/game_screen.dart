@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/game_state.dart';
 import '../models/record_data.dart';
+import '../services/audio_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/tap_button.dart';
 import 'result_screen.dart';
@@ -109,6 +110,7 @@ class _GameScreenState extends State<GameScreen>
     if (_gameState.phase == GamePhase.playing && !_goAnimTriggered) {
       _goAnimTriggered = true;
       _goAnimController.forward(from: 0);
+      AudioService().playStart();
     }
 
     // "Set" 中はパルスを繰り返す、それ以外は止める
@@ -130,6 +132,7 @@ class _GameScreenState extends State<GameScreen>
 
     if (_gameState.phase == GamePhase.finished && !_navigatedToResult) {
       _navigatedToResult = true;
+      AudioService().playGoal();
       _navigateToResult();
     }
   }
@@ -192,6 +195,7 @@ class _GameScreenState extends State<GameScreen>
     final isValid = _gameState.handleTap(side: side);
     if (isValid) {
       HapticFeedback.lightImpact();
+      AudioService().playTap();
     } else {
       HapticFeedback.mediumImpact();
     }

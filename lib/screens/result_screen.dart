@@ -1,6 +1,12 @@
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:confetti/confetti.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/record_data.dart';
+import '../services/audio_service.dart';
 import '../services/storage_service.dart';
 
 /// リザルト画面
@@ -37,6 +43,9 @@ class _ResultScreenState extends State<ResultScreen>
   late Animation<double> _scaleAnimation;
 
   late ConfettiController _confettiController;
+
+  final GlobalKey _shareKey = GlobalKey();
+  bool _sharing = false;
 
   @override
   void initState() {
@@ -106,6 +115,7 @@ class _ResultScreenState extends State<ResultScreen>
       if (_isNewBest) {
         _celebrationController.repeat(reverse: true);
         _confettiController.play();
+        AudioService().playBest();
       }
     }
   }
@@ -158,9 +168,31 @@ class _ResultScreenState extends State<ResultScreen>
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                           child: Column(
                             children: [
-                              ScaleTransition(
-                                scale: _scaleAnimation,
-                                child: _buildResultCard(context),
+                              RepaintBoundary(
+                                key: _shareKey,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _modeName(),
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Colors.grey,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    ScaleTransition(
+                                      scale: _scaleAnimation,
+                                      child: _buildResultCard(context),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Running Fingers',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Colors.grey,
+                                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 16),
                               if (_history.length > 1) _buildHistorySection(context),
@@ -381,31 +413,74 @@ class _ResultScreenState extends State<ResultScreen>
   Widget _buildActions(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
+          SizedBox(
+            width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                // スタック全体をクリアしてゲーム画面を再起動
-                Navigator.of(context).pop(true); // trueはリトライを示す
-              },
-              icon: const Icon(Icons.replay),
-              label: const Text('もう一度'),
+              onPressed: _sharing ? null : _shareResult,
+              icon: _sharing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.share),
+              label: const Text('シェア'),
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                // ホームまで戻る
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-              icon: const Icon(Icons.home),
-              label: const Text('メニュー'),
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop(true);
+                  },
+                  icon: const Icon(Icons.replay),
+                  label: const Text('もう一度'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                  icon: const Icon(Icons.home),
+                  label: const Text('メニュー'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _shareResult() async {
+    setState(() => _sharing = true);
+    try {
+      final boundary = _shareKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+      final bytes = byteData.buffer.asUint8List();
+
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/running_fingers_result.png');
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: '${_modeName()} #RunningFingers',
+      );
+    } catch (_) {
+      // 共有は任意操作のためサイレント失敗
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
 }

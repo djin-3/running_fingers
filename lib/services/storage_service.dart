@@ -7,6 +7,19 @@ import '../models/record_data.dart';
 class StorageService {
   static const int _maxHistory = 10;
 
+  // BGM設定キー
+  static const String bgmEnabledKey = 'bgm_enabled';
+
+  static Future<bool> getBgmEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(bgmEnabledKey) ?? true;
+  }
+
+  static Future<void> saveBgmEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(bgmEnabledKey, enabled);
+  }
+
   // ボタン位置キー
   static const String posKeyLeft = 'btn_pos_left';
   static const String posKeyRight = 'btn_pos_right';

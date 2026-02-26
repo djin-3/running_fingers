@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'models/record_data.dart';
 import 'screens/game_screen.dart';
+import 'services/audio_service.dart';
 import 'services/storage_service.dart';
 
 void main() {
@@ -43,11 +44,28 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // best[fingerMode][isTimeAttack]
   final Map<String, RecordData?> _bests = {};
+  bool _bgmEnabled = true;
 
   @override
   void initState() {
     super.initState();
     _loadBests();
+    _initAudio();
+  }
+
+  Future<void> _initAudio() async {
+    final enabled = await StorageService.getBgmEnabled();
+    if (mounted) {
+      setState(() => _bgmEnabled = enabled);
+    }
+    await AudioService().init(bgmEnabled: enabled);
+  }
+
+  Future<void> _toggleBgm() async {
+    final newEnabled = !_bgmEnabled;
+    setState(() => _bgmEnabled = newEnabled);
+    await StorageService.saveBgmEnabled(newEnabled);
+    await AudioService().setBgmEnabled(newEnabled);
   }
 
   Future<void> _loadBests() async {
@@ -101,11 +119,25 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'Running Fingers',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Running Fingers',
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _toggleBgm,
+                      icon: Icon(
+                        _bgmEnabled ? Icons.volume_up : Icons.volume_off,
+                        color: _bgmEnabled ? Colors.deepOrange : Colors.grey,
                       ),
+                      tooltip: _bgmEnabled ? 'BGMをオフにする' : 'BGMをオンにする',
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
