@@ -11,6 +11,11 @@
 - 原因: `isInPenalty` チェックを両モード共通で使ったが、タイムアタックのペナルティはタップを弾くのではなくカウンターをマイナスからスタートさせる仕組み
 - ルール: ペナルティの「種類」（タップ無効 vs カウントオフセット）をモードごとに明確に区別して実装する
 
+### 2026-02-26: dart2jsでdouble.clamp()の戻り値がnumになりビルドエラー
+- 問題: `double.clamp()` の戻り値を `Offset(x, y)` に渡すと dart2js でコンパイルエラー
+- 原因: Dartの型システムでは `double.clamp()` は `num` を返す。通常のdartコンパイラは許容するが dart2js は厳格
+- ルール: `clamp()` の結果を `double` として使う場合は必ず `.toDouble()` を付ける
+
 ### 2026-02-23: GitHub Actionsのトリガーブランチが `master` のままだった
 - 問題: `deploy-web.yml` のトリガーが `branches: [master]` で `main` へのpushでビルドが走らなかった
 - あわせて: GitHub Pages環境保護設定のDeployment branchesも `master` → `main` に変更が必要だった
