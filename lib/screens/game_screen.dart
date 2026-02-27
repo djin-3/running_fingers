@@ -16,7 +16,7 @@ import 'result_screen.dart';
 /// - 2本モード: 左右ボタン配置、交互タップ検出
 /// - 1本モード: 中央ボタン配置、連打検出
 /// - タイマー/カウンター表示
-/// - ボタン位置調整: readyフェーズで長押しドラッグ、位置はSharedPreferencesに保存
+/// - ボタン位置調整: readyフェーズで直接ドラッグ（2本指同時対応）、位置はSharedPreferencesに保存
 class GameScreen extends StatefulWidget {
   final int fingerMode;
   final bool isTimeAttack;
@@ -45,6 +45,12 @@ class _GameScreenState extends State<GameScreen>
 
   // スタートボタンの位置取得用
   final GlobalKey _startButtonKey = GlobalKey();
+
+  // ポインター→ボタンマッピング（readyフェーズの2本指ドラッグ）
+  final Map<int, String> _pointerToButton = {};
+  final Set<String> _draggingKeys = {};
+  Size _screenSize = Size.zero;
+  double _buttonSize = 0;
 
   // "Go!!" バウンス
   bool _goAnimTriggered = false;
@@ -207,6 +213,8 @@ class _GameScreenState extends State<GameScreen>
     _goAnimController.reset();
     _setPulseController.stop();
     _setPulseController.value = 0;
+    _pointerToButton.clear();
+    _draggingKeys.clear();
     _gameState.reset();
   }
 
@@ -219,6 +227,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _handleGameTap(Offset globalPos, Size size, double buttonSize) {
+    // 将来の2人プレイ: globalPos.dy < size.height / 2 でP1(上), >= でP2(下) を判定可能
     if (widget.fingerMode == 2) {
       final leftPx = Offset(_leftNorm.dx * size.width, _leftNorm.dy * size.height);
       final rightPx = Offset(_rightNorm.dx * size.width, _rightNorm.dy * size.height);
@@ -245,53 +254,83 @@ class _GameScreenState extends State<GameScreen>
     return (tapPosition - center).distance <= tapRadius;
   }
 
-  void _onButtonDragEnd(String key, Offset topLeftGlobal, Size size, double buttonSize) {
-    // LongPressDraggable.offset はフィードバックウィジェットの左上なのでセンターに変換
-    final centerGlobal = topLeftGlobal + Offset(buttonSize / 2, buttonSize / 2);
-    final raw = Offset(centerGlobal.dx / size.width, centerGlobal.dy / size.height);
+  void _onReadyPointerDown(PointerDownEvent event) {
+    final keys = widget.fingerMode == 2 ? ['left', 'right'] : ['center'];
+    for (final key in keys) {
+      if (_pointerToButton.containsValue(key)) continue;
+      final norm = key == 'left'
+          ? _leftNorm
+          : key == 'right'
+              ? _rightNorm
+              : _centerNorm;
+      final px = Offset(norm.dx * _screenSize.width, norm.dy * _screenSize.height);
+      if ((event.position - px).distance <= _buttonSize / 2 + 30) {
+        setState(() {
+          _pointerToButton[event.pointer] = key;
+          _draggingKeys.add(key);
+        });
+        return;
+      }
+    }
+  }
 
-    final constrained = _applyConstraints(key, raw, size, buttonSize);
+  void _onReadyPointerMove(PointerMoveEvent event) {
+    final key = _pointerToButton[event.pointer];
+    if (key == null) return;
+    final raw = Offset(
+      event.position.dx / _screenSize.width,
+      event.position.dy / _screenSize.height,
+    );
+    final constrained = _applyConstraints(key, raw, _screenSize, _buttonSize);
     setState(() {
       if (key == 'left') _leftNorm = constrained;
       else if (key == 'right') _rightNorm = constrained;
       else _centerNorm = constrained;
     });
+  }
+
+  void _onReadyPointerUp(PointerUpEvent event) {
+    final key = _pointerToButton[event.pointer];
+    if (key == null) return;
+    setState(() {
+      _pointerToButton.remove(event.pointer);
+      _draggingKeys.remove(key);
+    });
+    final norm = key == 'left'
+        ? _leftNorm
+        : key == 'right'
+            ? _rightNorm
+            : _centerNorm;
     StorageService.saveButtonPos(
       key == 'left'
           ? StorageService.posKeyLeft
           : key == 'right'
               ? StorageService.posKeyRight
               : StorageService.posKeyCenter,
-      constrained,
+      norm,
     );
   }
 
+  void _onReadyPointerCancel(PointerCancelEvent event) {
+    final key = _pointerToButton[event.pointer];
+    if (key == null) return;
+    setState(() {
+      _pointerToButton.remove(event.pointer);
+      _draggingKeys.remove(key);
+    });
+  }
+
   Offset _applyConstraints(String key, Offset norm, Size size, double buttonSize) {
-    // 1. 画面内クランプ（ヘッダー下 & ボタン半径マージン）
+    // 1. 画面内クランプ（下半分 Y >= 0.5 に制約 & ボタン半径マージン）
+    // Y >= 0.5 制約: 将来の2人プレイで上半分をP1、下半分をP2に使うため
+    // これによりスタートボタン（Y≈0.35）との重なりも物理的に排除される
     final hx = (buttonSize / 2) / size.width;
     final hy = (buttonSize / 2) / size.height;
-    // ヘッダー高さ（SafeAreaトップ + ヘッダーWidget約72px）
-    final headerNormY = (MediaQuery.of(context).padding.top + 72) / size.height;
     final x = norm.dx.clamp(hx, 1.0 - hx).toDouble();
-    final y = norm.dy.clamp(math.max(hy, headerNormY), 1.0 - hy).toDouble();
+    final y = norm.dy.clamp(math.max(hy, 0.5), 1.0 - hy).toDouble();
     var result = Offset(x, y);
 
-    // 2. スタートボタンとの重なり禁止
-    final startBox = _startButtonKey.currentContext?.findRenderObject() as RenderBox?;
-    if (startBox != null) {
-      final startPos = startBox.localToGlobal(Offset.zero);
-      final startSize = startBox.size;
-      final btnPx = Offset(result.dx * size.width, result.dy * size.height);
-      final btnRect = Rect.fromCenter(center: btnPx, width: buttonSize, height: buttonSize);
-      final startRect = startPos & startSize;
-      if (btnRect.overlaps(startRect)) {
-        return key == 'left' ? _leftNorm
-            : key == 'right' ? _rightNorm
-            : _centerNorm;
-      }
-    }
-
-    // 3. 2本モード: x方向制約（right.x >= left.x）
+    // 2. 2本モード: x方向制約（right.x >= left.x）
     if (widget.fingerMode == 2) {
       if (key == 'right') {
         result = Offset(math.max(result.dx, _leftNorm.dx), result.dy);
@@ -323,6 +362,8 @@ class _GameScreenState extends State<GameScreen>
     final buttonSize = widget.fingerMode == 2
         ? shortestSide * 0.20
         : shortestSide * 0.25;
+    _screenSize = size;
+    _buttonSize = buttonSize;
 
     return Scaffold(
       body: Stack(
@@ -395,27 +436,37 @@ class _GameScreenState extends State<GameScreen>
   }
 
   Widget _buildButtonOverlay(bool isReady, Size size, double buttonSize) {
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          if (widget.fingerMode == 2) ...[
-            _buildPositionedButton('left', isReady, size, buttonSize),
-            _buildPositionedButton('right', isReady, size, buttonSize),
-          ] else ...[
-            _buildPositionedButton('center', isReady, size, buttonSize),
-          ],
-          // readyフェーズのみ: 操作ヒント
-          if (isReady)
-            Align(
-              alignment: const Alignment(0, 0.6),
-              child: Text(
-                '長押しでボタンを移動',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
-              ),
-            ),
+    final stack = Stack(
+      children: [
+        if (widget.fingerMode == 2) ...[
+          _buildPositionedButton('left', isReady, size, buttonSize),
+          _buildPositionedButton('right', isReady, size, buttonSize),
+        ] else ...[
+          _buildPositionedButton('center', isReady, size, buttonSize),
         ],
-      ),
+        // readyフェーズのみ: 操作ヒント
+        if (isReady)
+          Align(
+            alignment: const Alignment(0, 0.6),
+            child: Text(
+              'ドラッグでボタンを移動',
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+            ),
+          ),
+      ],
+    );
+    return Positioned.fill(
+      child: isReady
+          ? Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: _onReadyPointerDown,
+              onPointerMove: _onReadyPointerMove,
+              onPointerUp: _onReadyPointerUp,
+              onPointerCancel: _onReadyPointerCancel,
+              child: stack,
+            )
+          : stack,
     );
   }
 
@@ -435,18 +486,13 @@ class _GameScreenState extends State<GameScreen>
       width: buttonSize,
       height: buttonSize,
       child: isReady
-          ? LongPressDraggable<String>(
-              data: key,
-              feedback: Material(
-                color: Colors.transparent,
-                child: Opacity(
-                    opacity: 0.75,
-                    child: _buildTapButtonWidget(key, buttonSize)),
+          ? AnimatedScale(
+              scale: _draggingKeys.contains(key) ? 1.12 : 1.0,
+              duration: const Duration(milliseconds: 100),
+              child: Opacity(
+                opacity: _draggingKeys.contains(key) ? 0.8 : 1.0,
+                child: button,
               ),
-              childWhenDragging: Opacity(opacity: 0.25, child: button),
-              onDragEnd: (details) =>
-                  _onButtonDragEnd(key, details.offset, size, buttonSize),
-              child: button,
             )
           : IgnorePointer(child: button),
     );
