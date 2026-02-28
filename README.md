@@ -320,3 +320,8 @@ class RecordData {
 flutter doctor
 ```
 
+---
+
+## アイコン案
+
+![icon draft](assets/icon_draft.svg)
