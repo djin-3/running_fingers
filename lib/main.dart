@@ -119,8 +119,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Stack(
+                  alignment: Alignment.center,
                   children: [
                     Text(
                       'Running Fingers',
@@ -128,14 +128,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: _toggleBgm,
-                      icon: Icon(
-                        _bgmEnabled ? Icons.volume_up : Icons.volume_off,
-                        color: _bgmEnabled ? Colors.deepOrange : Colors.grey,
+                    Positioned(
+                      right: 0,
+                      child: IconButton(
+                        onPressed: _toggleBgm,
+                        icon: Icon(
+                          _bgmEnabled ? Icons.volume_up : Icons.volume_off,
+                          color: _bgmEnabled ? Colors.deepOrange : Colors.grey,
+                        ),
+                        tooltip: _bgmEnabled ? 'BGMをオフにする' : 'BGMをオンにする',
                       ),
-                      tooltip: _bgmEnabled ? 'BGMをオフにする' : 'BGMをオンにする',
                     ),
                   ],
                 ),
