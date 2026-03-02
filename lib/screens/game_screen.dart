@@ -609,51 +609,28 @@ class _GameScreenState extends State<GameScreen>
     );
   }
 
-  /// "On your mark" / "Set" 準備フェーズ
+  /// "Ready" / 無音待機フェーズ
   ///
-  /// フェードのみで穏やかに切り替え（スケールなし）。
+  /// "Ready" 表示後テキストが消え、ランダム待機後 "Go!" が出る。
   Widget _buildPreparationView(BuildContext context) {
-    final isOnYourMark = _gameState.phase == GamePhase.onYourMark;
-    final text = isOnYourMark ? 'On your mark' : 'Set';
-    final color = isOnYourMark ? Colors.amber : Colors.orange;
+    final isReady = _gameState.phase == GamePhase.onYourMark;
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 400),
       transitionBuilder: (child, animation) {
-        // フェードのみ: スケールなしで穏やかに切り替え
         return FadeTransition(opacity: animation, child: child);
       },
       child: Center(
-        key: ValueKey(text),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // "Set" はパルスで緊張感、"On your mark" は静的表示
-            if (!isOnYourMark)
-              AnimatedBuilder(
-                animation: _setPulseAnim,
-                builder: (context, child) => Transform.scale(
-                  scale: _setPulseAnim.value,
-                  child: child,
-                ),
-                child: Text(
-                  text,
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              )
-            else
-              Text(
-                text,
+        key: ValueKey(isReady),
+        child: isReady
+            ? Text(
+                'Ready',
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      color: color,
+                      color: Colors.amber,
                       fontWeight: FontWeight.bold,
                     ),
-              ),
-          ],
-        ),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
