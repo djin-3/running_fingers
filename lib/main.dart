@@ -48,8 +48,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   // タブ順: 0 = 2 Fingers, 1 = 1 Finger
   static const _tabs = [
-    (fingerMode: 2, label: '2 Fingers'),
     (fingerMode: 1, label: '1 Finger'),
+    (fingerMode: 2, label: '2 Fingers'),
   ];
 
   @override
