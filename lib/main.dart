@@ -90,9 +90,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final best = _bests[key];
     if (best == null) return null;
     if (isTimeAttack) {
-      return 'ベスト: ${best.value.toStringAsFixed(2)}秒';
+      return 'Best: ${best.value.toStringAsFixed(2)}s';
     } else {
-      return 'ベスト: ${best.value.toInt()}回';
+      return 'Best: ${best.value.toInt()} taps';
     }
   }
 
@@ -139,17 +139,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '指で走れ！',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.grey,
-                      ),
-                ),
                 const SizedBox(height: 64),
-                // 2本モード
+                // 2 Fingers
                 Text(
-                  '2本モード',
+                  '2 Fingers',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 12),
@@ -157,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Expanded(
                       child: _ModeButton(
-                        label: 'タイムアタック\n100回',
+                        label: 'Time Attack\n100 taps',
                         subtitle: '100回タップの時間を計測',
                         best: _bestLabel(2, true),
                         onTap: () => _startGame(context, fingerMode: 2, isTimeAttack: true),
@@ -166,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _ModeButton(
-                        label: 'タップチャレンジ\n10秒',
+                        label: 'Tap Challenge\n10 sec',
                         subtitle: '10秒間のタップ数を計測',
                         best: _bestLabel(2, false),
                         onTap: () => _startGame(context, fingerMode: 2, isTimeAttack: false),
@@ -175,9 +168,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                // 1本モード
+                // 1 Finger
                 Text(
-                  '1本モード',
+                  '1 Finger',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 12),
@@ -185,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Expanded(
                       child: _ModeButton(
-                        label: 'タイムアタック\n100回',
+                        label: 'Time Attack\n100 taps',
                         subtitle: '100回タップの時間を計測',
                         best: _bestLabel(1, true),
                         onTap: () => _startGame(context, fingerMode: 1, isTimeAttack: true),
@@ -194,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _ModeButton(
-                        label: 'タップチャレンジ\n10秒',
+                        label: 'Tap Challenge\n10 sec',
                         subtitle: '10秒間のタップ数を計測',
                         best: _bestLabel(1, false),
                         onTap: () => _startGame(context, fingerMode: 1, isTimeAttack: false),

@@ -532,8 +532,8 @@ class _GameScreenState extends State<GameScreen>
 
   /// ヘッダー: モード名と戻るボタン
   Widget _buildHeader(BuildContext context) {
-    final modeName = widget.fingerMode == 2 ? '2本モード' : '1本モード';
-    final gameMode = widget.isTimeAttack ? 'タイムアタック 100回' : 'タップチャレンジ 10秒';
+    final modeName = widget.fingerMode == 2 ? '2 Fingers' : '1 Finger';
+    final gameMode = widget.isTimeAttack ? 'Time Attack 100 taps' : 'Tap Challenge 10 sec';
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -688,7 +688,7 @@ class _GameScreenState extends State<GameScreen>
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              child: const Text('スタート'),
+              child: const Text('Start'),
             ),
           ),
         ],
@@ -719,9 +719,9 @@ class _GameScreenState extends State<GameScreen>
                   Text(
                     _gameState.isInPenalty
                         ? (widget.isTimeAttack
-                            ? 'フライング！ペナルティ中 あと${_gameState.penaltyTapsRemaining}タップ'
-                            : 'フライング！ペナルティ中 ${_gameState.penaltyRemainingSeconds.toStringAsFixed(1)}秒')
-                        : 'フライング！ペナルティ適用済み',
+                            ? 'False Start! Penalty: ${_gameState.penaltyTapsRemaining} taps left'
+                            : 'False Start! Penalty: ${_gameState.penaltyRemainingSeconds.toStringAsFixed(1)}s left')
+                        : 'False Start! (penalty applied)',
                     style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                   ),
                 ],

@@ -147,8 +147,8 @@ class _ResultScreenState extends State<ResultScreen>
   }
 
   String _modeName() {
-    final finger = widget.record.fingerMode == 2 ? '2本' : '1本';
-    final mode = widget.isTimeAttack ? 'タイムアタック' : 'タップチャレンジ';
+    final finger = widget.record.fingerMode == 2 ? '2 Fingers' : '1 Finger';
+    final mode = widget.isTimeAttack ? 'Time Attack' : 'Tap Challenge';
     return '$finger $mode';
   }
 
@@ -238,7 +238,7 @@ class _ResultScreenState extends State<ResultScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _isNewBest ? '自己ベスト更新！' : '完了！',
+                _isNewBest ? 'New Record!' : 'Done!',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: _isNewBest ? Colors.amber : Colors.cyan,
@@ -291,7 +291,7 @@ class _ResultScreenState extends State<ResultScreen>
           children: [
             // 今回の記録
             Text(
-              '今回の記録',
+              'Result',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 4),
@@ -308,7 +308,7 @@ class _ResultScreenState extends State<ResultScreen>
             if (widget.record.hadFalseStart) ...[
               const SizedBox(height: 4),
               Text(
-                'フライングペナルティあり',
+                'False start penalty',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.red),
               ),
             ],
@@ -318,7 +318,7 @@ class _ResultScreenState extends State<ResultScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('自己ベスト', style: Theme.of(context).textTheme.bodyMedium),
+                  Text('Best', style: Theme.of(context).textTheme.bodyMedium),
                   Text(
                     _formatValue(_best!.value),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -331,7 +331,7 @@ class _ResultScreenState extends State<ResultScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('ベストとの差', style: Theme.of(context).textTheme.bodyMedium),
+                  Text('Diff', style: Theme.of(context).textTheme.bodyMedium),
                   Text(
                     _formatDiff(widget.record.value, _best!.value),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -343,7 +343,7 @@ class _ResultScreenState extends State<ResultScreen>
               ),
             ] else if (_isNewBest) ...[
               Text(
-                '新記録達成！',
+                'New Record!',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Colors.amber,
                       fontWeight: FontWeight.bold,
@@ -361,7 +361,7 @@ class _ResultScreenState extends State<ResultScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '直近の履歴',
+          'History',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.grey),
         ),
         const SizedBox(height: 8),
@@ -390,7 +390,7 @@ class _ResultScreenState extends State<ResultScreen>
                 ),
                 if (rec.hadFalseStart)
                   Text(
-                    'フライング',
+                    'False Start',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.red),
                   ),
                 const SizedBox(width: 8),
