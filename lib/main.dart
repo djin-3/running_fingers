@@ -41,16 +41,29 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  // best[fingerMode][isTimeAttack]
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final Map<String, RecordData?> _bests = {};
   bool _bgmEnabled = true;
+  late TabController _tabController;
+
+  // タブ順: 0 = 2 Fingers, 1 = 1 Finger
+  static const _tabs = [
+    (fingerMode: 2, label: '2 Fingers'),
+    (fingerMode: 1, label: '1 Finger'),
+  ];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: _tabs.length, vsync: this);
     _loadBests();
     _initAudio();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _initAudio() async {
@@ -105,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-    // ゲームから戻ったらベスト記録を再読み込み
     _loadBests();
   }
 
@@ -113,93 +125,82 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Text(
-                      'Running Fingers',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    Positioned(
-                      right: 0,
-                      child: IconButton(
-                        onPressed: _toggleBgm,
-                        icon: Icon(
-                          _bgmEnabled ? Icons.volume_up : Icons.volume_off,
-                          color: _bgmEnabled ? Colors.deepOrange : Colors.grey,
+        child: Column(
+          children: [
+            // タイトル
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 48, 32, 0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Text(
+                    'Running Fingers',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                        tooltip: _bgmEnabled ? 'BGMをオフにする' : 'BGMをオンにする',
+                  ),
+                  Positioned(
+                    right: 0,
+                    child: IconButton(
+                      onPressed: _toggleBgm,
+                      icon: Icon(
+                        _bgmEnabled ? Icons.volume_up : Icons.volume_off,
+                        color: _bgmEnabled ? Colors.deepOrange : Colors.grey,
                       ),
+                      tooltip: _bgmEnabled ? 'BGMをオフにする' : 'BGMをオンにする',
                     ),
-                  ],
-                ),
-                const SizedBox(height: 64),
-                // 2 Fingers
-                Text(
-                  '2 Fingers',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ModeButton(
-                        label: 'Time Attack\n100 taps',
-                        subtitle: '100回タップの時間を計測',
-                        best: _bestLabel(2, true),
-                        onTap: () => _startGame(context, fingerMode: 2, isTimeAttack: true),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ModeButton(
-                        label: 'Tap Challenge\n10 sec',
-                        subtitle: '10秒間のタップ数を計測',
-                        best: _bestLabel(2, false),
-                        onTap: () => _startGame(context, fingerMode: 2, isTimeAttack: false),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                // 1 Finger
-                Text(
-                  '1 Finger',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ModeButton(
-                        label: 'Time Attack\n100 taps',
-                        subtitle: '100回タップの時間を計測',
-                        best: _bestLabel(1, true),
-                        onTap: () => _startGame(context, fingerMode: 1, isTimeAttack: true),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ModeButton(
-                        label: 'Tap Challenge\n10 sec',
-                        subtitle: '10秒間のタップ数を計測',
-                        best: _bestLabel(1, false),
-                        onTap: () => _startGame(context, fingerMode: 1, isTimeAttack: false),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // タブ
+            TabBar(
+              controller: _tabController,
+              tabs: [
+                for (final t in _tabs) Tab(text: t.label),
               ],
             ),
-          ),
+            // タブコンテンツ
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  for (final t in _tabs)
+                    _buildModeList(context, fingerMode: t.fingerMode),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeList(BuildContext context, {required int fingerMode}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+        child: Row(
+          children: [
+            Expanded(
+              child: _ModeButton(
+                label: 'Time Attack\n100 taps',
+                subtitle: '100回タップの時間を計測',
+                best: _bestLabel(fingerMode, true),
+                onTap: () => _startGame(context, fingerMode: fingerMode, isTimeAttack: true),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ModeButton(
+                label: 'Tap Challenge\n10 sec',
+                subtitle: '10秒間のタップ数を計測',
+                best: _bestLabel(fingerMode, false),
+                onTap: () => _startGame(context, fingerMode: fingerMode, isTimeAttack: false),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -230,6 +231,7 @@ class _ModeButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 label,
